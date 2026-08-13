@@ -36,5 +36,7 @@ export default class EventManager {
     // Current event is scene-distance based, so forward and reverse scrolling agree.
     this.current = nearest?.distance < 8 ? nearest : null;
     document.body.dataset.currentEvent = this.current?.id || '';
+    const status = document.getElementById('event-status');
+    if (status) status.textContent = this.current ? this.current.title.toUpperCase() : 'FOLLOW THE MARKERS';
   }
 }

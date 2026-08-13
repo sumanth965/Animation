@@ -6,7 +6,6 @@ export default class ScrollController {
     this.progress = 0;
     this.target = 0;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.sections = [...document.querySelectorAll('[data-chapter]')];
     this.onScroll = this.onScroll.bind(this);
     window.addEventListener('scroll', this.onScroll, { passive: true });
     this.onScroll();
@@ -20,16 +19,12 @@ export default class ScrollController {
   update(delta) {
     const ease = this.reducedMotion ? 1.4 : 4.2;
     this.progress = THREE.MathUtils.damp(this.progress, this.target, ease, delta);
-    let active = 0;
-    this.sections.forEach((section, index) => {
-      const rect = section.getBoundingClientRect();
-      const center = Math.abs(rect.top + rect.height / 2 - innerHeight / 2);
-      if (center < Math.abs(this.sections[active].getBoundingClientRect().top + this.sections[active].getBoundingClientRect().height / 2 - innerHeight / 2)) active = index;
-    });
     document.documentElement.style.setProperty('--scroll-progress', this.progress);
-    document.body.dataset.chapter = this.sections[active]?.dataset.chapter || 'HOME';
-    document.querySelectorAll('[data-rail]').forEach((el, i) => el.classList.toggle('active', i === active));
+    const intro = document.querySelector('.experience-copy');
+    if (intro) intro.style.opacity = 1 - THREE.MathUtils.smoothstep(this.progress, .06, .28);
+    const phase = this.progress < .33 ? 'DIVE' : this.progress < .7 ? 'EXPLORE' : 'EXPERIENCE';
+    document.body.dataset.chapter = phase;
     const label = document.getElementById('current-chapter');
-    if (label) label.textContent = this.sections[active]?.dataset.chapter || 'HOME';
+    if (label) label.textContent = phase;
   }
 }

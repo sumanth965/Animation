@@ -20,7 +20,9 @@ export default class EventPoint {
     const screen = worldToScreen(this.waypoint, camera, innerWidth, innerHeight);
     this.distance = this.dolphin.dolphin.position.distanceTo(this.waypoint);
     this.proximity = 1 - THREE.MathUtils.smoothstep(this.distance, 4.5, 18);
-    const visible = screen.visible && this.proximity > .03;
+    // Keep the persistent title area clear; selected points remain available in the panel.
+    const overlapsIntro = screen.x < innerWidth * .52 && screen.y > innerHeight * .18 && screen.y < innerHeight * .82;
+    const visible = screen.visible && !overlapsIntro && this.proximity > .03;
     this.button.style.transform = `translate3d(${screen.x}px,${screen.y}px,0) translate(-50%,-50%) scale(${.75 + this.proximity * .45})`;
     this.button.style.opacity = visible ? Math.max(.18, this.proximity) : '0';
     this.button.style.pointerEvents = visible ? 'auto' : 'none';

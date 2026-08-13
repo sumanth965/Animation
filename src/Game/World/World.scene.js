@@ -60,11 +60,16 @@ export default class World {
     const progress = this.dolphin.journeyProgress;
     const dolphinPosition = this.dolphin.dolphin.position;
     const target = new THREE.Vector3(
-      THREE.MathUtils.lerp(4.5, -2.5, progress) + Math.sin(progress * Math.PI * 4) * 1.8,
-      THREE.MathUtils.lerp(1.2, 2.4, progress),
+      THREE.MathUtils.lerp(2.4, .8, progress) + Math.sin(progress * Math.PI * 4) * .55,
+      THREE.MathUtils.lerp(1.4, 1.7, progress),
       THREE.MathUtils.lerp(5, -49, progress)
     );
     camera.position.lerp(target, 1 - Math.exp(-this.game.time.delta * 2.2));
+    const targetFov = THREE.MathUtils.lerp(38, 27, progress);
+    if (Math.abs(camera.fov - targetFov) > .01) {
+      camera.fov = targetFov;
+      camera.updateProjectionMatrix();
+    }
     camera.lookAt(dolphinPosition.x * .28, dolphinPosition.y * .45, dolphinPosition.z - 4);
   }
 }
