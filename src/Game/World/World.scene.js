@@ -7,6 +7,7 @@ import FlowField from './Components/FlowField/FlowField.class';
 import WakeParticles from './Components/WakeParticles/WakeParticles.class';
 import Seabed from './Components/Seabed/Seabed.class';
 import EventManager from './Components/Events/EventManager.class';
+import CityManager from './Components/City/CityManager.class';
 
 export default class World {
   constructor() {
@@ -21,7 +22,8 @@ export default class World {
     this.flowField = new FlowField();
     this.dolphin = new Dolphin();
     this.wakeParticles = new WakeParticles(this.dolphin);
-    this.eventManager = new EventManager(this.dolphin);
+    this.city = new CityManager();
+    this.eventManager = new EventManager(this.dolphin, this.city);
   }
 
   update() {
@@ -39,6 +41,7 @@ export default class World {
     if (this.wormhole) {
       this.wormhole.update();
     }
+    if (this.city) this.city.update();
     if (this.flowField) {
       // Only update FlowField if visible
       if (this.flowField.points && frustum.intersectsObject(this.flowField.points)) {
@@ -64,12 +67,17 @@ export default class World {
       THREE.MathUtils.lerp(1.4, 1.7, progress),
       THREE.MathUtils.lerp(5, -49, progress)
     );
-    camera.position.lerp(target, 1 - Math.exp(-this.game.time.delta * 2.2));
+    // A little slower than the scroll timeline creates a weightless underwater glide.
+    camera.position.lerp(target, 1 - Math.exp(-this.game.time.delta * 1.45));
     const targetFov = THREE.MathUtils.lerp(38, 27, progress);
     if (Math.abs(camera.fov - targetFov) > .01) {
       camera.fov = targetFov;
       camera.updateProjectionMatrix();
     }
-    camera.lookAt(dolphinPosition.x * .28, dolphinPosition.y * .45, dolphinPosition.z - 4);
+    const orbitingBuilding = progress > .28 && progress < .68 && this.city;
+    const focus = orbitingBuilding
+      ? new THREE.Vector3(0, -2, dolphinPosition.z - 4).lerp(dolphinPosition, .38)
+      : new THREE.Vector3(dolphinPosition.x * .28, dolphinPosition.y * .45, dolphinPosition.z - 4);
+    camera.lookAt(focus);
   }
 }

@@ -4,10 +4,11 @@ import EventInfoPanel from './EventInfoPanel.class';
 
 // Coordinates all event points: projection, nearest-event status and temporary route focus.
 export default class EventManager {
-  constructor(dolphin) {
+  constructor(dolphin, city = null) {
     this.dolphin = dolphin;
     this.game = dolphin.game;
     this.selected = null;
+    this.city = city;
     this.current = null;
     this.points = EVENT_DATA.map(data => new EventPoint(data, dolphin, point => this.select(point)));
     this.panel = new EventInfoPanel(() => this.close());
@@ -16,6 +17,7 @@ export default class EventManager {
   select(point) {
     this.selected = point;
     this.dolphin.focusEvent(point.pathProgress);
+    this.city?.setSelected(point.id);
     this.points.forEach(item => item.setActive(item === point));
     this.panel.show(point);
   }
@@ -23,6 +25,7 @@ export default class EventManager {
     if (!this.selected) return;
     this.selected = null;
     this.dolphin.resumeJourney();
+    this.city?.setSelected('');
     this.points.forEach(item => item.setActive(false));
     this.panel.hide();
   }

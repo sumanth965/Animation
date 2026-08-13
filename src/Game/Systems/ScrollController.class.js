@@ -17,7 +17,8 @@ export default class ScrollController {
   }
 
   update(delta) {
-    const ease = this.reducedMotion ? 1.4 : 4.2;
+    // Camera/world receive a low-pass version of page travel: smooth even during fast wheel input.
+    const ease = this.reducedMotion ? 1.4 : 2.35;
     this.progress = THREE.MathUtils.damp(this.progress, this.target, ease, delta);
     document.documentElement.style.setProperty('--scroll-progress', this.progress);
     const intro = document.querySelector('.experience-copy');

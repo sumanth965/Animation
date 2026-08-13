@@ -16,7 +16,9 @@ export default class EventPoint {
     document.getElementById('event-markers').appendChild(this.button);
   }
   update(camera) {
-    this.dolphin.path.getWaypoint(this.pathProgress, this.offset, this.waypoint);
+    // Important locations are physically attached to their actual city buildings.
+    if (this.markerPosition) this.waypoint.copy(this.markerPosition);
+    else this.dolphin.path.getWaypoint(this.pathProgress, this.offset, this.waypoint);
     const screen = worldToScreen(this.waypoint, camera, innerWidth, innerHeight);
     this.distance = this.dolphin.dolphin.position.distanceTo(this.waypoint);
     this.proximity = 1 - THREE.MathUtils.smoothstep(this.distance, 4.5, 18);
