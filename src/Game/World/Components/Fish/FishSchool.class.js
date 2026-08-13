@@ -41,8 +41,17 @@ export default class FishSchool {
   }
 
   update() {
+    const progress = this.game.scroll.progress;
+    // Fish visible during opening DIVE phase (0 to ~0.3)
+    const fishVisibility = THREE.MathUtils.smoothstep(progress, 0.25, 0.35);
+    
     this.fish.forEach((fish) => {
       fish.update();
+      fish.mesh.visible = fishVisibility > 0.01;
+      // Fade out opacity
+      if (fish.mesh.material.opacity !== undefined) {
+        fish.mesh.material.opacity = fishVisibility;
+      }
     });
   }
 

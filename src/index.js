@@ -2,6 +2,11 @@ import Game from './Game/Game.class';
 import ResourceLoader from './Game/Utils/ResourceLoader.class';
 import ASSETS from './config/assets.js';
 
+// Always enter the experience from its authored opening frame, not a browser-restored scroll offset.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+window.addEventListener('pageshow', () => window.scrollTo(0, 0), { once: true });
+
 const loadingScreen = document.getElementById('loading-screen');
 const loaderStatus = document.getElementById('loader-status');
 const enterButton = document.getElementById('enter-experience');

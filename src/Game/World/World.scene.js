@@ -56,9 +56,10 @@ export default class World {
     }
     if (this.dolphin) {
       this.dolphin.update();
-      if (scrollDirty || !this.game.scroll.isSettled || this.eventManager.selected) {
+      if (scrollDirty || !this.game.scroll.isSettled || this.eventManager.selected || !this.cameraReady) {
         this.updateJourneyCamera();
         this.eventManager.update();
+        this.cameraReady = true;
       }
     }
     if (this.wakeParticles) {
@@ -72,13 +73,13 @@ export default class World {
     const dolphinPosition = this.dolphin.dolphin.position;
     const overview = THREE.MathUtils.smoothstep(progress, 0, .13);
     const target = new THREE.Vector3(
-      THREE.MathUtils.lerp(0, 1.1 + Math.sin(progress * Math.PI * 4) * .55, overview),
-      THREE.MathUtils.lerp(10, -3.9, overview),
-      THREE.MathUtils.lerp(15, dolphinPosition.z + 8, overview)
+      THREE.MathUtils.lerp(-1, 1.1 + Math.sin(progress * Math.PI * 4) * .55, overview),
+      THREE.MathUtils.lerp(-.8, -3.9, overview),
+      THREE.MathUtils.lerp(13, dolphinPosition.z + 8, overview)
     );
     // A little slower than the scroll timeline creates a weightless underwater glide.
     camera.position.lerp(target, 1 - Math.exp(-this.game.time.delta * 1.45));
-    const targetFov = THREE.MathUtils.lerp(52, 29, overview);
+    const targetFov = THREE.MathUtils.lerp(42, 29, overview);
     if (Math.abs(camera.fov - targetFov) > .01) {
       camera.fov = targetFov;
       camera.updateProjectionMatrix();
@@ -86,7 +87,7 @@ export default class World {
     const orbitingBuilding = progress > .13 && this.city;
     const focus = orbitingBuilding
       ? new THREE.Vector3(0, -6.5, dolphinPosition.z - 4).lerp(dolphinPosition, .5)
-      : new THREE.Vector3(0, -3, -25);
+      : new THREE.Vector3(0, -2.2, -1);
     camera.lookAt(focus);
   }
 }

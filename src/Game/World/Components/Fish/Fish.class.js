@@ -36,6 +36,8 @@ export default class Fish {
       metalness: 0.6,
       roughness: 0.3,
       emissive: new THREE.Color().setHSL(0.55, 0.4, 0.3),
+      transparent: true,
+      opacity: 1,
     });
 
     this.mesh = new THREE.Mesh(geometry, material);

@@ -5,8 +5,8 @@ export default class DolphinPath {
     // A single authored, reversible cinematic route. Buildings are at X ±9;
     // approach nodes remain inside the clear corridor and below roof level.
     this.waypoints = [
-      // High / forward opening for the complete submerged-city overview.
-      ['OVERVIEW','city-overview',0,8,12],['TRAVEL','overview-glide',-1,5,7],['TRAVEL','descent',-2,0,2],
+      // Opening: dolphin alone at the right of the empty water, alongside the left UI copy.
+      ['OVERVIEW','open-water',5,-2,5],['TRAVEL','overview-glide',3,-3.5,3],['TRAVEL','descent',-2,0,2],
       // Building 1: descend to its low front, then peel to the right.
       ['APPROACH','code-sprint',-5,-6.8,-9.5],['TRAVEL','leave-one',-2,-7.2,-12.5],['TRAVEL','arc-to-two',2,-7,-14.5],
       // Building 2, then a deliberately broad LEFT/downward corridor turn.

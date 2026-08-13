@@ -14,6 +14,8 @@ export default class ScrollController {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.onScroll = this.onScroll.bind(this);
     window.addEventListener('scroll', this.onScroll, { passive: true });
+    // A second frame handles browsers that restore scroll after module evaluation.
+    requestAnimationFrame(() => { window.scrollTo(0, 0); this.onScroll(); });
     this.onScroll();
   }
 

@@ -31,8 +31,9 @@ export default class CityManager {
     this.game = Game.getInstance(); this.scene = this.game.scene; this.time = this.game.time;
     // Keep the closest city layer legible; fog takes over only as the boulevard recedes.
     this.scene.fog.near = 34; this.scene.fog.far = 130;
-    this.city = new THREE.Group(); this.city.name = 'Aurora Underwater Fest City'; this.scene.add(this.city);
+    this.city = new THREE.Group(); this.city.name = 'Semaphore Underwater Fest City'; this.scene.add(this.city);
     this.buildings = new Map(); this.windowMatrices = []; this.windowColors = [];
+    this.roadGroup = new THREE.Group(); this.infrastructureGroup = new THREE.Group();
     this.baseMaterial = new THREE.MeshStandardMaterial({ color:0x0b2a48, emissive:0x06192f, emissiveIntensity:.78, roughness:.58, metalness:.62, transparent:true, opacity:1 });
     this.glassMaterial = new THREE.MeshStandardMaterial({ color:0x0d4262, emissive:0x063759, emissiveIntensity:.9, roughness:.14, metalness:.85, transparent:true, opacity:.72 });
     this.roofMaterial = new THREE.MeshStandardMaterial({ color:0x12608a, emissive:0x0b77ad, emissiveIntensity:1.35, roughness:.4, metalness:.5 });
@@ -45,29 +46,31 @@ export default class CityManager {
     OVERVIEW_SKYLINE.forEach((spec,index) => this.createBuilding(`skyline-${index}`, ...spec, 'tower', false, true));
     this.createWindows();
     this.createInfrastructure();
+    this.city.add(this.roadGroup);
+    this.city.add(this.infrastructureGroup);
     this.bindEvents();
     if (this.game.isDebugEnabled) this.createDebugBounds();
   }
   createRoad() {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(11, 74), new THREE.MeshStandardMaterial({ color:0x03101f, emissive:0x06355a, emissiveIntensity:.45, transparent:true, opacity:.8, roughness:.9 }));
-    road.rotation.x = -Math.PI/2; road.position.set(0,-11.7,-31); this.city.add(road);
+    road.rotation.x = -Math.PI/2; road.position.set(0,-11.7,-31); this.roadGroup.add(road);
     const stripes = new THREE.Group();
     for (let z=-1; z>-66; z-=5) { const stripe = new THREE.Mesh(new THREE.BoxGeometry(.12,.03,2.2), this.windowMaterial); stripe.position.set(0,-11.65,z); stripes.add(stripe); }
-    this.city.add(stripes);
+    this.roadGroup.add(stripes);
     const streetlights = new THREE.Group();
     for (let z=-2;z>-64;z-=8) for (const side of [-1,1]) {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,3.4,6),this.roofMaterial); pole.position.set(side*7,-10,z); streetlights.add(pole);
       const orb = new THREE.Mesh(new THREE.SphereGeometry(.16,8,8),this.mullionMaterial); orb.position.set(side*7,-8.3,z); streetlights.add(orb);
     }
-    this.city.add(streetlights);
+    this.roadGroup.add(streetlights);
   }
   createInfrastructure() {
     // A few deliberate connectors suggest a living city without crowding the waterway.
     const bridgeMaterial=new THREE.MeshStandardMaterial({color:0x071b31,emissive:0x0d5076,emissiveIntensity:.8,metalness:.7,roughness:.35});
     [[-10,-23,10,-25],[-10,-44,10,-48]].forEach(([x1,z1,x2,z2])=>{
       const dx=x2-x1,dz=z2-z1,length=Math.hypot(dx,dz), bridge=new THREE.Mesh(new THREE.BoxGeometry(length,.22,1.1),bridgeMaterial);
-      bridge.position.set((x1+x2)/2,-5.4,(z1+z2)/2);bridge.rotation.y=-Math.atan2(dz,dx);this.city.add(bridge);
-      const rail=new THREE.Mesh(new THREE.BoxGeometry(length,.06,.05),this.mullionMaterial);rail.position.copy(bridge.position).add(new THREE.Vector3(0,.34,.48));rail.rotation.y=bridge.rotation.y;this.city.add(rail);
+      bridge.position.set((x1+x2)/2,-5.4,(z1+z2)/2);bridge.rotation.y=-Math.atan2(dz,dx);this.infrastructureGroup.add(bridge);
+      const rail=new THREE.Mesh(new THREE.BoxGeometry(length,.06,.05),this.mullionMaterial);rail.position.copy(bridge.position).add(new THREE.Vector3(0,.34,.48));rail.rotation.y=bridge.rotation.y;this.infrastructureGroup.add(rail);
     });
   }
   collectTierWindows(x,z,width,depth,yStart,yEnd,important) {
@@ -109,8 +112,8 @@ export default class CityManager {
     if (type === 'tower') { const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3,6),this.mullionMaterial); antenna.position.y=topY+3; group.add(antenna); const beacon=new THREE.Mesh(new THREE.SphereGeometry(.14,8,8),this.mullionMaterial);beacon.position.y=topY+4.4;group.add(beacon);group.userData.beacon=beacon; }
     if (type === 'college' || type === 'gallery') { for (let side=-1;side<=1;side+=2) { const wing=new THREE.Mesh(new THREE.BoxGeometry(width*.35,height*.48,depth*1.35),this.baseMaterial.clone()); wing.position.set(side*width*.58,height*.24,0); group.add(wing); const edges=new THREE.LineSegments(new THREE.EdgesGeometry(wing.geometry),this.edgeMaterial);edges.position.copy(wing.position);group.add(edges); } }
     if (important) { const inward=x<0?1:-1; const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.2,.18,width*.7),this.mullionMaterial);canopy.position.set(inward*(width/2+1),2.4,0);group.add(canopy); const sign=new THREE.Mesh(new THREE.BoxGeometry(.15,1.4,2.4),this.mullionMaterial);sign.position.set(inward*(width/2+.2),2.2,0);group.add(sign); }
-    // The city is already present in the opening skyline; scrolling completes its assembly.
-    group.scale.y=background ? .55 : .36; this.city.add(group); this.buildings.set(id,group);
+    // The opening is intentionally open water; the city materializes only after scrolling starts.
+    group.scale.y=0; this.city.add(group); this.buildings.set(id,group);
     if (important) {
       const light = new THREE.PointLight(0x36dfff, 3.2, 16, 2);
       light.position.set(0, topY + 1, 0); group.add(light); group.userData.light = light; group.userData.lightBase = 3.2;
@@ -158,9 +161,23 @@ export default class CityManager {
   update() {
     if (this.game.scroll.isSettled && this._settledOnce) return;
     const progress=this.game.scroll.progress;
+    
+    // Hide road and infrastructure during opening phase (DIVE), show during EXPLORE and EXPERIENCE
+    const showRoad = THREE.MathUtils.smoothstep(progress, 0.15, 0.25);
+    this.roadGroup.visible = showRoad > 0.01;
+    this.roadGroup.children.forEach(child => {
+      child.traverse(mesh => {
+        if (mesh.material && mesh.material.opacity !== undefined) {
+          mesh.material.opacity *= showRoad;
+        }
+      });
+    });
+    this.infrastructureGroup.visible = showRoad > 0.01;
+    
     this.buildings.forEach(building=>{
-      const assembled=THREE.MathUtils.smoothstep(progress,Math.max(0,building.userData.reveal-.17),building.userData.reveal+.12);
-      const local=(building.userData.background ? .55 : .36)+(building.userData.background ? .45 : .64)*assembled;
+      // Keep open water untouched until the visitor deliberately begins the dive.
+      const assembled=THREE.MathUtils.smoothstep(progress,Math.max(.075,building.userData.reveal-.17),building.userData.reveal+.12);
+      const local=assembled;
       building.scale.y=local;
       building.visible=local>.01;
       if (building.userData.light) building.userData.light.intensity = building.userData.lightBase * local;
