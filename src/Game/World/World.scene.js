@@ -27,6 +27,7 @@ export default class World {
   }
 
   update() {
+    const scrollDirty = this.game.scroll.dirty;
     // Get camera frustum for culling
     const camera = this.game.camera.cameraInstance;
     const frustum = new THREE.Frustum();
@@ -41,7 +42,7 @@ export default class World {
     if (this.wormhole) {
       this.wormhole.update();
     }
-    if (this.city) this.city.update();
+    if (this.city && (scrollDirty || !this.game.scroll.isSettled)) this.city.update();
     if (this.flowField) {
       // Only update FlowField if visible
       if (this.flowField.points && frustum.intersectsObject(this.flowField.points)) {
@@ -50,8 +51,10 @@ export default class World {
     }
     if (this.dolphin) {
       this.dolphin.update();
-      this.updateJourneyCamera();
-      this.eventManager.update();
+      if (scrollDirty || !this.game.scroll.isSettled || this.eventManager.selected) {
+        this.updateJourneyCamera();
+        this.eventManager.update();
+      }
     }
     if (this.wakeParticles) {
       this.wakeParticles.update();
@@ -62,22 +65,23 @@ export default class World {
     const camera = this.game.camera.cameraInstance;
     const progress = this.dolphin.journeyProgress;
     const dolphinPosition = this.dolphin.dolphin.position;
+    const overview = THREE.MathUtils.smoothstep(progress, 0, .13);
     const target = new THREE.Vector3(
-      THREE.MathUtils.lerp(2.4, .8, progress) + Math.sin(progress * Math.PI * 4) * .55,
-      THREE.MathUtils.lerp(1.4, 1.7, progress),
-      THREE.MathUtils.lerp(5, -49, progress)
+      THREE.MathUtils.lerp(0, 1.1 + Math.sin(progress * Math.PI * 4) * .55, overview),
+      THREE.MathUtils.lerp(10, -3.9, overview),
+      THREE.MathUtils.lerp(15, dolphinPosition.z + 8, overview)
     );
     // A little slower than the scroll timeline creates a weightless underwater glide.
     camera.position.lerp(target, 1 - Math.exp(-this.game.time.delta * 1.45));
-    const targetFov = THREE.MathUtils.lerp(38, 27, progress);
+    const targetFov = THREE.MathUtils.lerp(52, 29, overview);
     if (Math.abs(camera.fov - targetFov) > .01) {
       camera.fov = targetFov;
       camera.updateProjectionMatrix();
     }
-    const orbitingBuilding = progress > .28 && progress < .68 && this.city;
+    const orbitingBuilding = progress > .13 && this.city;
     const focus = orbitingBuilding
-      ? new THREE.Vector3(0, -2, dolphinPosition.z - 4).lerp(dolphinPosition, .38)
-      : new THREE.Vector3(dolphinPosition.x * .28, dolphinPosition.y * .45, dolphinPosition.z - 4);
+      ? new THREE.Vector3(0, -6.5, dolphinPosition.z - 4).lerp(dolphinPosition, .5)
+      : new THREE.Vector3(0, -3, -25);
     camera.lookAt(focus);
   }
 }

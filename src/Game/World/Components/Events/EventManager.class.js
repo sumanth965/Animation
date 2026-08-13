@@ -12,6 +12,7 @@ export default class EventManager {
     this.current = null;
     this.points = EVENT_DATA.map(data => new EventPoint(data, dolphin, point => this.select(point)));
     this.panel = new EventInfoPanel(() => this.close());
+    this._lastUpdate = 0;
     document.addEventListener('keydown', event => { if (event.key === 'Escape') this.close(); });
   }
   select(point) {
@@ -30,6 +31,11 @@ export default class EventManager {
     this.panel.hide();
   }
   update() {
+    const now = performance.now();
+    const active = this.game.scroll.isScrolling || this.selected;
+    // Projection and event distance checks are only valuable while the view is changing.
+    if (!active && now - this._lastUpdate < 180) return;
+    this._lastUpdate = now;
     const camera = this.game.camera.cameraInstance;
     let nearest = null;
     this.points.forEach(point => {

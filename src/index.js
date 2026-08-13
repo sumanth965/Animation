@@ -19,7 +19,8 @@ resources.on('error', ({ id }) => { console.warn(`Fest asset unavailable: ${id}`
 resources.on('loaded', () => {
   loaderStatus.textContent = 'EXPERIENCE READY · 100%';
   enterButton.disabled = false;
-  new Game(document.getElementById('three'), resources, false);
+  const debugMode = new URLSearchParams(window.location.search).get('mode') === 'debug';
+  new Game(document.getElementById('three'), resources, debugMode);
 });
 enterButton.addEventListener('click', () => { loadingScreen.classList.add('hidden'); setSound(true); });
 

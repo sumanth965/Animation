@@ -2,16 +2,25 @@ import * as THREE from 'three';
 
 export default class DolphinPath {
   constructor() {
-    // Alternates close to event façades with safe central crossovers.
-    this.curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-7,-1.4,5),new THREE.Vector3(-2,.4,1),new THREE.Vector3(-2,-.4,-3),
-      new THREE.Vector3(-5,-.7,-9.5),new THREE.Vector3(.5,1,-13.5),new THREE.Vector3(4.6,.5,-16.5),
-      new THREE.Vector3(-.8,1.7,-20.5),new THREE.Vector3(-4.6,.9,-22.5),new THREE.Vector3(.9,1.9,-26.5),
-      new THREE.Vector3(4.6,.9,-28.5),new THREE.Vector3(-.8,2.2,-32),new THREE.Vector3(-4.2,1.5,-33.5),
-      new THREE.Vector3(.8,2.5,-37),new THREE.Vector3(4.6,1.6,-38.5),new THREE.Vector3(-.8,2.1,-42),
-      new THREE.Vector3(-4.6,1.9,-43.5),new THREE.Vector3(.8,1.8,-47),new THREE.Vector3(5,1.3,-48.5),
-      new THREE.Vector3(-.8,1.5,-52),new THREE.Vector3(-4.2,1.1,-53.5),new THREE.Vector3(.5,.9,-58),new THREE.Vector3(0,.6,-61)
-    ], false, 'catmullrom', .3);
+    // A single authored, reversible cinematic route. Buildings are at X ±9;
+    // approach nodes remain inside the clear corridor and below roof level.
+    this.waypoints = [
+      // High / forward opening for the complete submerged-city overview.
+      ['OVERVIEW','city-overview',0,8,12],['TRAVEL','overview-glide',-1,5,7],['TRAVEL','descent',-2,0,2],
+      // Building 1: descend to its low front, then peel to the right.
+      ['APPROACH','code-sprint',-5,-6.8,-9.5],['TRAVEL','leave-one',-2,-7.2,-12.5],['TRAVEL','arc-to-two',2,-7,-14.5],
+      // Building 2, then a deliberately broad LEFT/downward corridor turn.
+      ['APPROACH','hackathon',4.6,-6.2,-16.5],['TRAVEL','leave-two',2,-7,-19],['TRAVEL','wide-left',-3.6,-8.1,-22],['TRAVEL','left-depth',-4.8,-8.7,-25],
+      // Curve up toward Building 3.
+      ['TRAVEL','rise-three',-3.2,-7.4,-27],['APPROACH','web-design',-4.6,-6.2,-29],['TRAVEL','leave-three',-1.5,-7,-31.5],
+      // Wide RIGHT/upward return to Building 4.
+      ['TRAVEL','wide-right',3.8,-6.4,-34],['TRAVEL','right-rise',4.8,-5.5,-36.5],['APPROACH','pixel-play',4.6,-5.7,-38.5],
+      ['TRAVEL','leave-four',1.3,-7,-41],['TRAVEL','left-down',-3.7,-8,-43.5],['APPROACH','pulse',-4.2,-5.8,-45],
+      ['TRAVEL','right-up',3.8,-6.1,-48],['APPROACH','quiz',4.6,-6,-49.5],['TRAVEL','left-down',-3.8,-7.8,-52],
+      ['APPROACH','bandwave',-4.6,-5.3,-53.5],['TRAVEL','right-rise',4,-6.2,-56],['APPROACH','creative-lab',5,-6,-57.5],
+      ['TRAVEL','final-curve',-2.2,-7,-59.5],['APPROACH','frame-by-frame',-4.2,-5.8,-60.5],['TRAVEL','finish',0,-7,-63]
+    ];
+    this.curve = new THREE.CatmullRomCurve3(this.waypoints.map(([, , x,y,z])=>new THREE.Vector3(x,y,z)), false, 'catmullrom', .3);
     this.position = new THREE.Vector3();
     this.tangent = new THREE.Vector3();
   }

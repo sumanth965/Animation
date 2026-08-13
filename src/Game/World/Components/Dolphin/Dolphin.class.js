@@ -35,7 +35,21 @@ export default class Dolphin {
     this.targetQuaternion = new THREE.Quaternion();
     this.forward = new THREE.Vector3(0, 0, 1);
     this.setupSurfaceSampling();
+    this.setPathDebug();
     this.setDebug();
+  }
+
+  // Kept behind ?mode=debug to verify corridor clearance against real city geometry.
+  setPathDebug() {
+    if (!this.game.isDebugEnabled) return;
+    const curveGeometry = new THREE.BufferGeometry().setFromPoints(this.path.curve.getPoints(240));
+    const curveLine = new THREE.Line(curveGeometry, new THREE.LineBasicMaterial({ color: 0x35f1ff }));
+    this.scene.add(curveLine);
+    this.path.waypoints.forEach(([type, name, x, y, z]) => {
+      const color = type === 'APPROACH' ? 0xffc857 : 0x35f1ff;
+      const marker = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 8), new THREE.MeshBasicMaterial({ color }));
+      marker.position.set(x, y, z); marker.name = `${type}: ${name}`; this.scene.add(marker);
+    });
   }
 
   setMaterial() {
