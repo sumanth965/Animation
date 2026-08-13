@@ -8,6 +8,7 @@ import WakeParticles from './Components/WakeParticles/WakeParticles.class';
 import Seabed from './Components/Seabed/Seabed.class';
 import EventManager from './Components/Events/EventManager.class';
 import CityManager from './Components/City/CityManager.class';
+import FishSchool from './Components/Fish/FishSchool.class';
 
 export default class World {
   constructor() {
@@ -23,6 +24,7 @@ export default class World {
     this.dolphin = new Dolphin();
     this.wakeParticles = new WakeParticles(this.dolphin);
     this.city = new CityManager();
+    this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
     this.eventManager = new EventManager(this.dolphin, this.city);
   }
 
@@ -48,6 +50,9 @@ export default class World {
       if (this.flowField.points && frustum.intersectsObject(this.flowField.points)) {
         this.flowField.update();
       }
+    }
+    if (this.fishSchool) {
+      this.fishSchool.update();
     }
     if (this.dolphin) {
       this.dolphin.update();
