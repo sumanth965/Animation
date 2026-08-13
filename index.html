@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="description" content="AURORA 2026 — the underwater college fest experience." />
+  <title>AURORA 2026 | College Fest</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+
+<body>
+  <div class="loader" id="loading-screen">
+    <div class="loader-inner">
+      <img src="./public/img/semaphore_logo.png" alt="" srcset="" style="width: 500px;height: 500px;">
+      <!-- <div class="loader-mark">AURORA<b>’26</b></div> -->
+      <p id="loader-status">LOADING THE DIVE · 0%</p><button id="enter-experience" disabled>ENTER EXPERIENCE</button>
+    </div>
+  </div>
+  <canvas id="three"></canvas>
+  <header class="topbar">
+    <div class="brand">AURORA<b>’26</b></div>
+    <div class="meta">14—16 FEB · RIVERDALE COLLEGE · BENGALURU</div><button class="sound" id="audio-toggle"><span
+        id="audio-label">SOUND OFF</span></button>
+  </header>
+  <nav class="rail" aria-label="Fest chapters"><button data-rail aria-label="Home"></button><button data-rail
+      aria-label="About"></button><button data-rail aria-label="Events"></button><button data-rail
+      aria-label="Technical"></button><button data-rail aria-label="Cultural"></button><button data-rail
+      aria-label="Workshops"></button><button data-rail aria-label="Gaming"></button><button data-rail
+      aria-label="Gallery"></button><button data-rail aria-label="Sponsors"></button><button data-rail
+      aria-label="Register"></button></nav>
+  <main class="fest-ui" id="ui-layer">
+    <section class="chapter" data-chapter="HOME"
+      style="--image:url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">Riverdale College presents</span>
+        <h1>DIVE INTO<br />THE EXTRA<br />ORDINARY.</h1>
+        <p>Three nights. One electric campus. AURORA is where ideas surface and the entire city comes alive.</p><a
+          class="cta" href="#register">EXPLORE AURORA</a>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="ABOUT"
+      style="--image:url('https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">01 / The story</span>
+        <h2>MADE FOR THE CURIOUS.</h2>
+        <p>From late-night rehearsals to first-time inventions, AURORA brings every current of campus together.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="EVENTS"
+      style="--image:url('https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">02 / 60+ experiences</span>
+        <h2>ONE CAMPUS.<br />ENDLESS SIGNAL.</h2>
+        <p>Competitions, showcases, conversations and moments you will want to replay.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="TECHNICAL"
+      style="--image:url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">03 / Build</span>
+        <h2>CODE THE<br />UNKNOWN.</h2>
+        <p>Hackathons, robotics, product sprints and ideas with real momentum.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="CULTURAL"
+      style="--image:url('https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">04 / Perform</span>
+        <h2>TURN UP<br />THE TIDE.</h2>
+        <p>Music, dance and theatre under a brighter kind of spotlight.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="WORKSHOPS"
+      style="--image:url('https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">05 / Learn</span>
+        <h2>MAKE A<br />NEW WAVE.</h2>
+        <p>Get close to people doing the work you want to do next.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="GAMING"
+      style="--image:url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">06 / Play</span>
+        <h2>PRESS<br />START.</h2>
+        <p>Fast hands, loud rooms and a leaderboard that matters.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="GALLERY"
+      style="--image:url('https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">07 / Remember</span>
+        <h2>THE AFTERGLOW.</h2>
+        <p>Some moments live far beyond the final applause.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="SPONSORS"
+      style="--image:url('https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">08 / Partners</span>
+        <h2>POWERING<br />THE CURRENT.</h2>
+        <p>Made possible by people who believe in a bolder generation.</p>
+      </div>
+    </section>
+    <section class="chapter" data-chapter="REGISTER" id="register"
+      style="--image:url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1800&q=85')">
+      <div class="copy"><span class="eyebrow">09 / Your invitation</span>
+        <h2>THE DIVE<br />STARTS WITH YOU.</h2>
+        <p>Registrations are now open. Pick your current and come find it.</p><a class="cta"
+          href="mailto:fest@riverdale.edu?subject=Aurora%202026%20Registration">REGISTER NOW</a>
+      </div>
+    </section>
+    <footer class="footer">
+      <div><span class="eyebrow">AURORA ’26</span>
+        <h2>SEE YOU<br />UNDER THE LIGHTS.</h2>
+      </div>
+    </footer>
+  </main>
+  <div class="hud">NOW EXPLORING / <b id="current-chapter">HOME</b> · 60+ EVENTS</div>
+  <script type="module" src="/src/index.js"></script>
+</body>
+
+</html>
