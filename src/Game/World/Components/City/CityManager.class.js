@@ -34,6 +34,7 @@ export default class CityManager {
     this.city = new THREE.Group(); this.city.name = 'Aurora Underwater Fest City'; this.scene.add(this.city);
     this.buildings = new Map(); this.windowMatrices = []; this.windowColors = [];
     this.baseMaterial = new THREE.MeshStandardMaterial({ color:0x0b2a48, emissive:0x06192f, emissiveIntensity:.78, roughness:.58, metalness:.62, transparent:true, opacity:1 });
+    this.glassMaterial = new THREE.MeshStandardMaterial({ color:0x0d4262, emissive:0x063759, emissiveIntensity:.9, roughness:.14, metalness:.85, transparent:true, opacity:.72 });
     this.roofMaterial = new THREE.MeshStandardMaterial({ color:0x12608a, emissive:0x0b77ad, emissiveIntensity:1.35, roughness:.4, metalness:.5 });
     this.windowMaterial = new THREE.MeshBasicMaterial({ color:0xffffff, vertexColors:true, transparent:true, opacity:.96, blending:THREE.AdditiveBlending });
     this.edgeMaterial = new THREE.LineBasicMaterial({ color:0x4be8ff, transparent:true, opacity:.55, blending:THREE.AdditiveBlending, depthWrite:false });
@@ -43,6 +44,7 @@ export default class CityManager {
     SUPPORT_BUILDINGS.forEach((spec,index) => this.createBuilding(`support-${index}`, ...spec, 'residential', false));
     OVERVIEW_SKYLINE.forEach((spec,index) => this.createBuilding(`skyline-${index}`, ...spec, 'tower', false, true));
     this.createWindows();
+    this.createInfrastructure();
     this.bindEvents();
     if (this.game.isDebugEnabled) this.createDebugBounds();
   }
@@ -58,6 +60,15 @@ export default class CityManager {
       const orb = new THREE.Mesh(new THREE.SphereGeometry(.16,8,8),this.mullionMaterial); orb.position.set(side*7,-8.3,z); streetlights.add(orb);
     }
     this.city.add(streetlights);
+  }
+  createInfrastructure() {
+    // A few deliberate connectors suggest a living city without crowding the waterway.
+    const bridgeMaterial=new THREE.MeshStandardMaterial({color:0x071b31,emissive:0x0d5076,emissiveIntensity:.8,metalness:.7,roughness:.35});
+    [[-10,-23,10,-25],[-10,-44,10,-48]].forEach(([x1,z1,x2,z2])=>{
+      const dx=x2-x1,dz=z2-z1,length=Math.hypot(dx,dz), bridge=new THREE.Mesh(new THREE.BoxGeometry(length,.22,1.1),bridgeMaterial);
+      bridge.position.set((x1+x2)/2,-5.4,(z1+z2)/2);bridge.rotation.y=-Math.atan2(dz,dx);this.city.add(bridge);
+      const rail=new THREE.Mesh(new THREE.BoxGeometry(length,.06,.05),this.mullionMaterial);rail.position.copy(bridge.position).add(new THREE.Vector3(0,.34,.48));rail.rotation.y=bridge.rotation.y;this.city.add(rail);
+    });
   }
   collectTierWindows(x,z,width,depth,yStart,yEnd,important) {
     const rows=Math.max(2,Math.floor((yEnd-yStart)/1.45)), cols=Math.max(2,Math.floor(width/1.25));
@@ -81,7 +92,7 @@ export default class CityManager {
     return {topY:y,topWidth};
   }
   createBuilding(id, x, z, width, depth, height, type, important, background = false) {
-    const group = new THREE.Group(); group.name = id; group.position.set(x, -12, z); group.userData = { id, height, x, z, background, reveal: THREE.MathUtils.clamp((-z-4)/58, .05, .96), important };
+    const group = new THREE.Group(); group.name = id; group.position.set(x, -12, z); group.rotation.y=((x*13+z*7)%5)*.018; group.userData = { id, height, x, z, background, reveal: THREE.MathUtils.clamp((-z-4)/58, .05, .96), important };
     let topY=height, topWidth=width;
     if (TIER_PROFILES[type]) {
       const result=this.buildTieredMass(group,width,depth,height,type); topY=result.topY;topWidth=result.topWidth;
@@ -94,6 +105,7 @@ export default class CityManager {
       ? new THREE.Mesh(new THREE.SphereGeometry(width*.62,16,10,0,Math.PI*2,0,Math.PI/2), this.roofMaterial)
       : new THREE.Mesh(new THREE.CylinderGeometry(topWidth*.34,topWidth*.48, type==='tower'?2.2:1, 6), this.roofMaterial);
     roof.position.y=topY+(type==='auditorium'?0:1); group.add(roof);
+    this.addArchitecturalIdentity(group, type, width, depth, height, topY, important);
     if (type === 'tower') { const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3,6),this.mullionMaterial); antenna.position.y=topY+3; group.add(antenna); const beacon=new THREE.Mesh(new THREE.SphereGeometry(.14,8,8),this.mullionMaterial);beacon.position.y=topY+4.4;group.add(beacon);group.userData.beacon=beacon; }
     if (type === 'college' || type === 'gallery') { for (let side=-1;side<=1;side+=2) { const wing=new THREE.Mesh(new THREE.BoxGeometry(width*.35,height*.48,depth*1.35),this.baseMaterial.clone()); wing.position.set(side*width*.58,height*.24,0); group.add(wing); const edges=new THREE.LineSegments(new THREE.EdgesGeometry(wing.geometry),this.edgeMaterial);edges.position.copy(wing.position);group.add(edges); } }
     if (important) { const inward=x<0?1:-1; const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.2,.18,width*.7),this.mullionMaterial);canopy.position.set(inward*(width/2+1),2.4,0);group.add(canopy); const sign=new THREE.Mesh(new THREE.BoxGeometry(.15,1.4,2.4),this.mullionMaterial);sign.position.set(inward*(width/2+.2),2.2,0);group.add(sign); }
@@ -103,6 +115,26 @@ export default class CityManager {
       const light = new THREE.PointLight(0x36dfff, 3.2, 16, 2);
       light.position.set(0, topY + 1, 0); group.add(light); group.userData.light = light; group.userData.lightBase = 3.2;
     }
+  }
+  addArchitecturalIdentity(group,type,width,depth,height,topY,important) {
+    const accent=important ? this.mullionMaterial : this.windowMaterial;
+    if (type==='tower') {
+      const crown=new THREE.Mesh(new THREE.CylinderGeometry(width*.23,width*.32,1.5,16,1,true),this.glassMaterial);crown.position.y=topY+1.7;group.add(crown);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(width*.32,.055,6,24),accent);ring.rotation.x=Math.PI/2;ring.position.y=topY+2.35;group.add(ring);
+    } else if (type==='lab') {
+      const capsule=new THREE.Mesh(new THREE.CapsuleGeometry(width*.18,Math.max(1,height*.24),8,12),this.glassMaterial);capsule.position.set(0,height*.57,depth*.53);group.add(capsule);
+      const band=new THREE.Mesh(new THREE.TorusGeometry(width*.42,.045,6,24),accent);band.rotation.x=Math.PI/2;band.position.y=height*.6;group.add(band);
+    } else if (type==='auditorium') {
+      const domeRing=new THREE.Mesh(new THREE.TorusGeometry(width*.57,.075,8,32),accent);domeRing.rotation.x=Math.PI/2;domeRing.position.y=height+.12;group.add(domeRing);
+      const spire=new THREE.Mesh(new THREE.ConeGeometry(.22,1.8,8),this.roofMaterial);spire.position.y=height+2;group.add(spire);
+    } else if (type==='college' || type==='gallery') {
+      const facade=new THREE.Mesh(new THREE.BoxGeometry(width*.58,height*.55,.1),this.glassMaterial);facade.position.set(0,height*.5,depth*.51);group.add(facade);
+      for(let y=height*.25;y<height*.9;y+=height*.22){const band=new THREE.Mesh(new THREE.BoxGeometry(width*.64,.045,.08),accent);band.position.set(0,y,depth*.57);group.add(band);}
+    } else if (type==='residential') {
+      const balcony=new THREE.Mesh(new THREE.BoxGeometry(width*.82,.09,depth*1.06),this.glassMaterial);balcony.position.y=height*.6;group.add(balcony);
+    }
+    // A restrained vertical light blade gives important buildings an unmistakable entry identity.
+    if (important) { const blade=new THREE.Mesh(new THREE.BoxGeometry(.09,Math.min(height*.7,6),.12),this.mullionMaterial);blade.position.set(0,Math.min(height*.4,3.2),depth*.55);group.add(blade); }
   }
   createWindows() {
     const geometry=new THREE.BoxGeometry(1,1,1); this.windows=new THREE.InstancedMesh(geometry,this.windowMaterial,this.windowMatrices.length);
