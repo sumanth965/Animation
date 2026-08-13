@@ -30,6 +30,8 @@ export default class Dolphin {
     this.setModelInstance();
     this.setAnimation();
     this.path = new DolphinPath();
+    this.journeyProgress = 0;
+    this.focusProgress = null;
     this.targetQuaternion = new THREE.Quaternion();
     this.forward = new THREE.Vector3(0, 0, 1);
     this.setupSurfaceSampling();
@@ -262,19 +264,26 @@ export default class Dolphin {
   }
 
   updateJourney() {
+    const scrollProgress = this.game.scroll.progress;
+    const destination = this.focusProgress === null ? scrollProgress : this.focusProgress;
+    const speed = this.focusProgress === null ? 2.7 : 1.25;
+    this.journeyProgress = THREE.MathUtils.damp(this.journeyProgress, destination, speed, this.time.delta);
     const { position, tangent } = this.path.getPoint(
-      this.game.scroll.progress,
+      this.journeyProgress,
       this.time.elapsedTime
     );
     this.dolphin.position.copy(position);
     // The model faces +Z; align it to the spline velocity then softly bank into turns.
     this.targetQuaternion.setFromUnitVectors(this.forward, tangent.clone().normalize());
-    const bank = Math.sin(this.game.scroll.progress * Math.PI * 9) * .18;
+    const bank = Math.sin(this.journeyProgress * Math.PI * 9) * .18;
     this.targetQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(tangent, bank));
     this.dolphin.quaternion.slerp(this.targetQuaternion, 1 - Math.exp(-this.time.delta * 5));
     const pulse = Math.sin(this.time.elapsedTime * 4.2) * .025;
     this.dolphin.rotation.z += pulse;
   }
+
+  focusEvent(progress) { this.focusProgress = progress; }
+  resumeJourney() { this.focusProgress = null; }
 
   setupSurfaceSampling() {
     this.dolphinMesh = null;

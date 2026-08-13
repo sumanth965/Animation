@@ -6,6 +6,7 @@ import Wormhole from './Components/Wormhole/Wormhole.class';
 import FlowField from './Components/FlowField/FlowField.class';
 import WakeParticles from './Components/WakeParticles/WakeParticles.class';
 import Seabed from './Components/Seabed/Seabed.class';
+import EventManager from './Components/Events/EventManager.class';
 
 export default class World {
   constructor() {
@@ -20,6 +21,7 @@ export default class World {
     this.flowField = new FlowField();
     this.dolphin = new Dolphin();
     this.wakeParticles = new WakeParticles(this.dolphin);
+    this.eventManager = new EventManager(this.dolphin);
   }
 
   update() {
@@ -46,6 +48,7 @@ export default class World {
     if (this.dolphin) {
       this.dolphin.update();
       this.updateJourneyCamera();
+      this.eventManager.update();
     }
     if (this.wakeParticles) {
       this.wakeParticles.update();
@@ -54,7 +57,7 @@ export default class World {
 
   updateJourneyCamera() {
     const camera = this.game.camera.cameraInstance;
-    const progress = this.game.scroll.progress;
+    const progress = this.dolphin.journeyProgress;
     const dolphinPosition = this.dolphin.dolphin.position;
     const target = new THREE.Vector3(
       THREE.MathUtils.lerp(4.5, -2.5, progress) + Math.sin(progress * Math.PI * 4) * 1.8,

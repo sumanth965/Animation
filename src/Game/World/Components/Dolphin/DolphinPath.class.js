@@ -24,4 +24,9 @@ export default class DolphinPath {
     this.position.x += Math.sin(elapsed * .31 + p * 20) * .12;
     return { position: this.position, tangent: this.tangent };
   }
+  getWaypoint(progress, offset, target = new THREE.Vector3()) {
+    this.curve.getPointAt(progress, target);
+    target.x += offset[0]; target.y += offset[1]; target.z += offset[2];
+    return target;
+  }
 }
