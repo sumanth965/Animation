@@ -56,12 +56,18 @@ export default class PostProcessing {
     
     // Drag state
     this.isDragging = false;
+    this.enabled = true;
 
-    this.composer = new EffectComposer(this.renderer);
-    this.setupPasses();
-    this.setupPointerListeners();
+    try {
+      this.composer = new EffectComposer(this.renderer);
+      this.setupPasses();
+      this.setupPointerListeners();
+    } catch (err) {
+      console.warn('[PostProcessing] ShaderPass/EffectComposer setup failed on this hardware. Falling back to direct scene rendering.', err);
+      this.enabled = false;
+    }
 
-    if (this.isDebugEnabled) {
+    if (this.isDebugEnabled && this.enabled) {
       this.initTweakPane();
     }
   }
@@ -86,12 +92,10 @@ export default class PostProcessing {
 
     this.combinedPass = new ShaderPass(CombinedShader);
     this.composer.addPass(this.combinedPass);
-
-    const gammaCorrectionPass = new ShaderPass(GammaCorrectionShader);
-    // this.composer.addPass(gammaCorrectionPass);
   }
 
   initTweakPane() {
+    if (!this.debug || !this.combinedPass) return;
     this.debug.add(
       this.combinedPass.uniforms.uGlowIntensity,
       'value',
@@ -123,27 +127,22 @@ export default class PostProcessing {
   }
 
   update(elapsedTime, deltaTime) {
-    // Idle hero values are already settled. Avoid continuously touching the
-    // full-screen effect uniforms until the user interacts or starts diving.
+    if (!this.enabled || !this.combinedPass) return;
     if (this.game.scroll.state !== 'SCROLLING' && !this.isDragging) return;
 
     this.combinedPass.uniforms.uTime.value = elapsedTime;
     this.combinedPass.uniforms.uMouseInfluence.value.copy(this.mouseVelocity);
 
-    // Determine target values based on drag state
     const targetRGBShift = this.isDragging ? this.maxRGBShift : this.baseRGBShift;
     const targetVignette = this.isDragging ? this.maxVignetteStrength : this.baseVignetteStrength;
     const targetGlow = this.isDragging ? this.maxGlowIntensity : this.baseGlowIntensity;
 
-    // Use simpler linear interpolation instead of exponential smoothing
     const lerpFactor = Math.min(deltaTime * this.easeK, 1.0);
 
-    // Interpolate current values towards targets
     this.currentRGBShift = this.lerp(this.currentRGBShift, targetRGBShift, lerpFactor);
     this.currentVignetteStrength = this.lerp(this.currentVignetteStrength, targetVignette, lerpFactor);
     this.currentGlowIntensity = this.lerp(this.currentGlowIntensity, targetGlow, lerpFactor);
 
-    // Apply to uniforms (uAberration controls RGB shift in the shader)
     this.combinedPass.uniforms.uAberration.value = this.currentRGBShift;
     this.combinedPass.uniforms.uVignetteStrength.value = this.currentVignetteStrength;
     this.combinedPass.uniforms.uGlowIntensity.value = this.currentGlowIntensity;
@@ -154,14 +153,23 @@ export default class PostProcessing {
   }
 
   render() {
-    this.composer.render();
+    if (this.enabled && this.composer) {
+      try {
+        this.composer.render();
+      } catch (e) {
+        console.warn('[PostProcessing] Render error in composer. Disabling post-processing pass.', e);
+        this.enabled = false;
+      }
+    }
   }
 
   resize() {
-    this.composer.setSize(this.sizes.width, this.sizes.height);
+    if (this.enabled && this.composer) {
+      this.composer.setSize(this.sizes.width, this.sizes.height);
+    }
   }
 
   dispose() {
-    this.composer.dispose();
+    if (this.composer) this.composer.dispose();
   }
 }

@@ -17,29 +17,94 @@ export default class Game {
     Game.instance = this;
 
     this.isDebugEnabled = debugMode;
+    console.log('[Game Initialization] Deterministic startup sequence started.');
+
     if (this.isDebugEnabled) {
-      this.debug = new DebugPane();
+      try {
+        this.debug = new DebugPane();
+        console.log('[Game Initialization] Stage 1: DebugPane initialized.');
+      } catch (e) {
+        console.warn('[Game Initialization] Stage 1 Warning: DebugPane setup failed:', e);
+      }
     }
 
     this.canvas = canvas;
     this.resources = resources;
 
-    this.sizes = new Sizes();
-    this.time = new Time();
-    this.mouse = new Mouse();
-    this.scene = new THREE.Scene();
-    this.camera = new Camera();
-    this.renderer = new Renderer();
-    this.scroll = new ScrollController();
-    this.world = new World();
-    this.postProcessing = new PostProcessing();
+    try {
+      this.sizes = new Sizes();
+      console.log(`[Game Initialization] Stage 2: Sizes initialized (${this.sizes.width}x${this.sizes.height}, DPR: ${this.sizes.pixelRatio}).`);
+    } catch (e) {
+      console.error('[Game Initialization] Stage 2 Error: Sizes failed:', e);
+    }
 
-    this.time.on('animate', () => {
-      this.update();
-    });
-    this.sizes.on('resize', () => {
-      this.resize();
-    });
+    try {
+      this.time = new Time();
+      console.log('[Game Initialization] Stage 3: Time system initialized.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 3 Error: Time failed:', e);
+    }
+
+    try {
+      this.mouse = new Mouse();
+      console.log('[Game Initialization] Stage 4: Mouse input initialized.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 4 Error: Mouse failed:', e);
+    }
+
+    try {
+      this.scene = new THREE.Scene();
+      console.log('[Game Initialization] Stage 5: Three.js Scene created.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 5 Error: Scene creation failed:', e);
+    }
+
+    try {
+      this.camera = new Camera();
+      console.log('[Game Initialization] Stage 6: Camera created.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 6 Error: Camera creation failed:', e);
+    }
+
+    try {
+      this.renderer = new Renderer();
+      console.log('[Game Initialization] Stage 7: Renderer created successfully.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 7 Error: Renderer creation failed:', e);
+    }
+
+    try {
+      this.scroll = new ScrollController();
+      console.log('[Game Initialization] Stage 8: ScrollController created.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 8 Error: ScrollController failed:', e);
+    }
+
+    try {
+      this.world = new World();
+      console.log('[Game Initialization] Stage 9: World scene created (sea, dolphin, buildings, lighting, events).');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 9 Error: World scene creation failed:', e);
+    }
+
+    try {
+      this.postProcessing = new PostProcessing();
+      console.log('[Game Initialization] Stage 10: PostProcessing created.');
+    } catch (e) {
+      console.warn('[Game Initialization] Stage 10 Warning: PostProcessing failed, falling back to direct render:', e);
+    }
+
+    try {
+      this.time.on('animate', () => {
+        this.update();
+      });
+      this.sizes.on('resize', () => {
+        this.resize();
+      });
+      console.log('[Game Initialization] Stage 11: Animation loop started successfully.');
+    } catch (e) {
+      console.error('[Game Initialization] Stage 11 Error: Animation loop setup failed:', e);
+    }
   }
 
   static getInstance() {
@@ -50,18 +115,20 @@ export default class Game {
   }
 
   resize() {
-    this.camera.resize();
-    this.renderer.resize();
-    this.postProcessing.resize();
+    if (this.camera) this.camera.resize();
+    if (this.renderer) this.renderer.resize();
+    if (this.postProcessing) this.postProcessing.resize();
   }
 
   update() {
-    this.mouse.update(this.time.delta);
-    this.scroll.update(this.time.delta);
-    this.camera.update(this.mouse, this.time.delta);
-    this.world.update();
-    this.postProcessing.update(this.time.elapsed, this.time.delta);
-    this.renderer.update();
+    if (this.mouse) this.mouse.update(this.time.delta);
+    if (this.scroll) this.scroll.update(this.time.delta);
+    if (this.camera && this.mouse) this.camera.update(this.mouse, this.time.delta);
+    if (this.world) this.world.update();
+    if (this.postProcessing && this.postProcessing.enabled) {
+      this.postProcessing.update(this.time.elapsed, this.time.delta);
+    }
+    if (this.renderer) this.renderer.update();
   }
 
   destroy() {

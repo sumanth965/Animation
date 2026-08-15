@@ -30,14 +30,31 @@ export default class Renderer {
       NeutralToneMapping: THREE.NeutralToneMapping,
     };
 
-    this.rendererInstance = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: false,
-      alpha: false,
-      powerPreference: 'high-performance',
-      stencil: false,
-      depth: true,
-    });
+    try {
+      this.rendererInstance = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: false,
+        alpha: true,
+        powerPreference: 'high-performance',
+        stencil: false,
+        depth: true,
+      });
+    } catch (e) {
+      console.warn('[Renderer] High-performance WebGL creation failed. Retrying with default power preference...', e);
+      try {
+        this.rendererInstance = new THREE.WebGLRenderer({
+          canvas: this.canvas,
+          antialias: false,
+          alpha: true,
+          powerPreference: 'default',
+          stencil: false,
+          depth: true,
+        });
+      } catch (e2) {
+        console.error('[Renderer] Critical: WebGLRenderer creation failed on this device.', e2);
+        throw e2;
+      }
+    }
     
     // Optimize renderer settings for better performance
     this.rendererInstance.sortObjects = false; // Disable sorting for better performance
@@ -68,11 +85,13 @@ export default class Renderer {
   }
 
   resize() {
+    if (!this.rendererInstance) return;
     this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
     this.rendererInstance.setPixelRatio(this.sizes.pixelRatio);
   }
 
   initTweakPane() {
+    if (!this.debug || !this.rendererInstance) return;
     this.debug.add(
       this.rendererInstance,
       'toneMapping',
@@ -86,14 +105,15 @@ export default class Renderer {
       'Renderer Settings'
     );
   }
+
   update() {
     if (this.perf) {
       this.perf.beginFrame();
     }
 
-    if (this.game.postProcessing) {
+    if (this.game.postProcessing && this.game.postProcessing.enabled) {
       this.game.postProcessing.render();
-    } else {
+    } else if (this.rendererInstance && this.scene && this.camera && this.camera.cameraInstance) {
       this.rendererInstance.render(this.scene, this.camera.cameraInstance);
     }
 
