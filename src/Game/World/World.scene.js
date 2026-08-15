@@ -15,7 +15,7 @@ export default class World {
     this.game = Game.getInstance();
     this.scene = this.game.scene;
     this.scene.fog = new THREE.Fog(0x020a16, 5, 28);
-    this.scene.background = new THREE.Color(0x020a16);
+    this.scene.background = null;
 
     this.lighting = new Lighting({ helperEnabled: false });
 
