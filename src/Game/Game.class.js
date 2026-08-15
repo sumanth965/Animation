@@ -17,94 +17,85 @@ export default class Game {
     Game.instance = this;
 
     this.isDebugEnabled = debugMode;
+    this.stageMetrics = {};
+    const gameStartTime = performance.now();
     console.log('[Game Initialization] Deterministic startup sequence started.');
 
-    if (this.isDebugEnabled) {
+    const runStage = (stageNumber, stageName, fn, isCritical = true) => {
+      const t0 = performance.now();
       try {
-        this.debug = new DebugPane();
-        console.log('[Game Initialization] Stage 1: DebugPane initialized.');
-      } catch (e) {
-        console.warn('[Game Initialization] Stage 1 Warning: DebugPane setup failed:', e);
+        fn();
+        const duration = performance.now() - t0;
+        this.stageMetrics[`Stage ${stageNumber}: ${stageName}`] = { status: 'SUCCESS', durationMs: duration.toFixed(2) };
+        console.log(`[Game Initialization] Stage ${stageNumber}: ${stageName} initialized in ${duration.toFixed(2)}ms`);
+      } catch (err) {
+        const duration = performance.now() - t0;
+        this.stageMetrics[`Stage ${stageNumber}: ${stageName}`] = { status: isCritical ? 'FAILED' : 'WARNING', durationMs: duration.toFixed(2), error: err?.message || String(err) };
+        if (isCritical) {
+          console.error(`[Game Initialization] Stage ${stageNumber} CRITICAL ERROR: ${stageName} failed after ${duration.toFixed(2)}ms:`, err);
+        } else {
+          console.warn(`[Game Initialization] Stage ${stageNumber} WARNING: ${stageName} failed after ${duration.toFixed(2)}ms:`, err);
+        }
       }
+    };
+
+    if (this.isDebugEnabled) {
+      runStage(1, 'DebugPane', () => {
+        this.debug = new DebugPane();
+      }, false);
     }
 
     this.canvas = canvas;
     this.resources = resources;
 
-    try {
+    runStage(2, 'Sizes', () => {
       this.sizes = new Sizes();
-      console.log(`[Game Initialization] Stage 2: Sizes initialized (${this.sizes.width}x${this.sizes.height}, DPR: ${this.sizes.pixelRatio}).`);
-    } catch (e) {
-      console.error('[Game Initialization] Stage 2 Error: Sizes failed:', e);
-    }
+    });
 
-    try {
+    runStage(3, 'Time', () => {
       this.time = new Time();
-      console.log('[Game Initialization] Stage 3: Time system initialized.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 3 Error: Time failed:', e);
-    }
+    });
 
-    try {
+    runStage(4, 'Mouse', () => {
       this.mouse = new Mouse();
-      console.log('[Game Initialization] Stage 4: Mouse input initialized.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 4 Error: Mouse failed:', e);
-    }
+    });
 
-    try {
+    runStage(5, 'Three.js Scene', () => {
       this.scene = new THREE.Scene();
-      console.log('[Game Initialization] Stage 5: Three.js Scene created.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 5 Error: Scene creation failed:', e);
-    }
+    });
 
-    try {
+    runStage(6, 'Camera', () => {
       this.camera = new Camera();
-      console.log('[Game Initialization] Stage 6: Camera created.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 6 Error: Camera creation failed:', e);
-    }
+    });
 
-    try {
+    runStage(7, 'Renderer', () => {
       this.renderer = new Renderer();
-      console.log('[Game Initialization] Stage 7: Renderer created successfully.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 7 Error: Renderer creation failed:', e);
-    }
+    });
 
-    try {
+    runStage(8, 'ScrollController', () => {
       this.scroll = new ScrollController();
-      console.log('[Game Initialization] Stage 8: ScrollController created.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 8 Error: ScrollController failed:', e);
-    }
+    });
 
-    try {
+    runStage(9, 'World Scene', () => {
       this.world = new World();
-      console.log('[Game Initialization] Stage 9: World scene created (sea, dolphin, buildings, lighting, events).');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 9 Error: World scene creation failed:', e);
-    }
+    });
 
-    try {
+    runStage(10, 'PostProcessing', () => {
       this.postProcessing = new PostProcessing();
-      console.log('[Game Initialization] Stage 10: PostProcessing created.');
-    } catch (e) {
-      console.warn('[Game Initialization] Stage 10 Warning: PostProcessing failed, falling back to direct render:', e);
-    }
+    }, false);
 
-    try {
+    runStage(11, 'Animation Loop', () => {
       this.time.on('animate', () => {
         this.update();
       });
       this.sizes.on('resize', () => {
         this.resize();
       });
-      console.log('[Game Initialization] Stage 11: Animation loop started successfully.');
-    } catch (e) {
-      console.error('[Game Initialization] Stage 11 Error: Animation loop setup failed:', e);
-    }
+    });
+
+    const totalInitDuration = performance.now() - gameStartTime;
+    console.log(`[Diagnostic] [Game Startup Complete] Total initialization duration: ${totalInitDuration.toFixed(2)}ms`);
+    console.log('[Diagnostic] [Game Stage Metrics Summary]:', this.stageMetrics);
   }
 
   static getInstance() {

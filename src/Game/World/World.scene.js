@@ -17,69 +17,73 @@ export default class World {
     this.scene.fog = new THREE.Fog(0x020a16, 5, 28);
     this.scene.background = null;
 
-    try {
+    this.componentMetrics = {};
+
+    const initComponent = (name, fn) => {
+      const t0 = performance.now();
+      try {
+        fn();
+        const duration = performance.now() - t0;
+        this.componentMetrics[name] = { status: 'SUCCESS', durationMs: duration.toFixed(2) };
+        console.log(`[Diagnostic] [World Component] '${name}' initialized in ${duration.toFixed(2)}ms`);
+      } catch (err) {
+        const duration = performance.now() - t0;
+        this.componentMetrics[name] = { status: 'FAILED', durationMs: duration.toFixed(2), error: err?.message || String(err) };
+        console.error(`[Diagnostic] [World Component] Stage Failure: '${name}' failed after ${duration.toFixed(2)}ms:`, err);
+      }
+    };
+
+    initComponent('Lighting', () => {
       this.lighting = new Lighting({ helperEnabled: false });
-    } catch (e) {
-      console.warn('[World] Lighting initialization warning:', e);
-    }
+    });
 
-    try {
+    initComponent('Seabed', () => {
       this.seabed = new Seabed();
-    } catch (e) {
-      console.warn('[World] Seabed initialization warning:', e);
-    }
+    });
 
-    try {
+    initComponent('Wormhole', () => {
       this.wormhole = new Wormhole();
-    } catch (e) {
-      console.warn('[World] Wormhole initialization warning:', e);
-    }
+    });
 
-    try {
+    initComponent('Dolphin', () => {
       this.dolphin = new Dolphin();
-    } catch (e) {
-      console.warn('[World] Dolphin initialization warning:', e);
-    }
+    });
 
-    try {
+    initComponent('CityManager', () => {
       this.city = new CityManager();
-    } catch (e) {
-      console.warn('[World] CityManager initialization warning:', e);
-    }
+    });
 
-    try {
+    initComponent('EventManager', () => {
       if (this.dolphin && this.city) {
         this.eventManager = new EventManager(this.dolphin, this.city);
+      } else {
+        console.warn('[Diagnostic] [World Component] EventManager skipped because Dolphin or CityManager failed.');
       }
-    } catch (e) {
-      console.warn('[World] EventManager initialization warning:', e);
-    }
+    });
 
     // Progressive background initialization of non-critical effects after the first hero frame
     setTimeout(() => {
-      try {
+      initComponent('FlowField', () => {
         if (!this.flowField) {
           this.flowField = new FlowField();
         }
-      } catch (e) {
-        console.warn('[World] FlowField progressive initialization warning:', e);
-      }
+      });
 
-      try {
+      initComponent('WakeParticles', () => {
         if (this.dolphin && !this.wakeParticles) {
           this.wakeParticles = new WakeParticles(this.dolphin);
+        } else if (!this.dolphin) {
+          console.warn('[Diagnostic] [World Component] WakeParticles skipped because Dolphin model failed.');
         }
-      } catch (e) {
-        console.warn('[World] WakeParticles progressive initialization warning:', e);
-      }
+      });
 
-      try {
+      initComponent('FishSchool', () => {
         if (!this.fishSchool) {
           this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
         }
-      } catch (e) {
-        console.warn('[World] FishSchool progressive initialization warning:', e);
-      }
+      });
+
+      console.log('[Diagnostic] [World Scene] All progressive background components initialized:', this.componentMetrics);
     }, 150);
     
     // Configurable camera settings for smooth dynamic follow

@@ -58,12 +58,16 @@ export default class PostProcessing {
     this.isDragging = false;
     this.enabled = true;
 
+    const t0 = performance.now();
     try {
       this.composer = new EffectComposer(this.renderer);
       this.setupPasses();
       this.setupPointerListeners();
+      const duration = performance.now() - t0;
+      console.log(`[Diagnostic] [PostProcessing] EffectComposer & passes initialized in ${duration.toFixed(2)}ms`);
     } catch (err) {
-      console.warn('[PostProcessing] ShaderPass/EffectComposer setup failed on this hardware. Falling back to direct scene rendering.', err);
+      const duration = performance.now() - t0;
+      console.warn(`[Diagnostic] [PostProcessing] Setup failed after ${duration.toFixed(2)}ms. Falling back to direct scene rendering. Error:`, err);
       this.enabled = false;
     }
 

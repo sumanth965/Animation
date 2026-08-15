@@ -43,10 +43,17 @@ export default class Lighting {
   }
 
   setEnvironmentMapInstance() {
+    const envTexture = this.resources?.items?.environmentMapTexture;
+    if (!envTexture) {
+      console.warn('[Diagnostic] [Lighting] environmentMapTexture not found. Skipping environment map setup.');
+      return;
+    }
+
     this.environmentMap = {
       intensity: 1.5,
-      texture: this.resources.items.environmentMapTexture,
+      texture: envTexture,
       updateMaterials: () => {
+        if (!this.environmentMap.texture) return;
         this.scene.traverse((child) => {
           if (
             child instanceof THREE.Mesh &&

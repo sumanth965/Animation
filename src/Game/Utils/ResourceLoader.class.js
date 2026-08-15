@@ -21,6 +21,7 @@ export default class ResourceLoader extends EventEmitter {
 
     this.startTime = performance.now();
     this.criticalLoadedTime = null;
+    this.assetMetrics = {};
 
     this.sources.forEach((src) => {
       const paths = Array.isArray(src.path) ? src.path : [src.path];
@@ -76,7 +77,7 @@ export default class ResourceLoader extends EventEmitter {
       if (this.isFinished) return;
       this.isFinished = true;
       this.criticalLoadedTime = performance.now() - this.startTime;
-      console.log(`[Performance] Critical assets loaded in: ${this.criticalLoadedTime.toFixed(1)}ms`);
+      console.log(`[Diagnostic] [ResourceLoader] All critical assets finished in ${this.criticalLoadedTime.toFixed(2)}ms`, this.assetMetrics);
       this.trigger('loaded', {
         itemsLoaded: this.toLoad,
         itemsTotal: this.toLoad,
@@ -95,7 +96,7 @@ export default class ResourceLoader extends EventEmitter {
       const src = this.sourceByUrl[urlKey];
       const id = src ? src.id : urlKey;
 
-      console.error(`[ResourceLoader] Load error for asset ${id} at URL: ${urlKey}`);
+      console.error(`[Diagnostic] [ResourceLoader] Load error for asset '${id}' at URL: ${urlKey}`);
 
       this.trigger('error', {
         id,
@@ -121,7 +122,7 @@ export default class ResourceLoader extends EventEmitter {
     // Fail-safe 4.5 second timeout to guarantee page opens even on slow/broken connections
     setTimeout(() => {
       if (!this.isFinished) {
-        console.warn('[ResourceLoader] Loading timeout reached. Force starting 3D experience...');
+        console.warn('[Diagnostic] [ResourceLoader] Loading timeout reached (4.5s). Force starting 3D experience...');
         this.manager.onLoad();
       }
     }, 4500);
@@ -147,9 +148,14 @@ export default class ResourceLoader extends EventEmitter {
   initLoading() {
     for (const source of this.sources) {
       const { type, path, id, fallbackPath } = source;
+      const assetStartTime = performance.now();
 
       const onLoad = (file) => {
+        const duration = performance.now() - assetStartTime;
         this.items[id] = file;
+        this.assetMetrics[id] = { status: 'SUCCESS', durationMs: duration.toFixed(2), type, path };
+        console.log(`[Diagnostic] [ResourceLoader] Asset '${id}' (${type}) loaded successfully in ${duration.toFixed(2)}ms`);
+
         if (id === 'heroBackground') {
           this.debugStatus.textureLoaded = true;
           this.debugStatus.textureError = 'none';
@@ -157,14 +163,15 @@ export default class ResourceLoader extends EventEmitter {
       };
 
       const onError = (err) => {
-        console.warn(`[ResourceLoader] Failed loading primary asset '${id}' from '${path}'. Attempting fallback...`, err);
+        const duration = performance.now() - assetStartTime;
+        console.warn(`[Diagnostic] [ResourceLoader] Failed loading primary asset '${id}' from '${path}' after ${duration.toFixed(2)}ms. Error:`, err);
+        this.assetMetrics[id] = { status: 'FAILED', durationMs: duration.toFixed(2), type, path, error: err?.message || String(err) };
+
         if (id === 'heroBackground') {
           this.debugStatus.textureError = `Failed: ${path}`;
         }
         if (fallbackPath) {
-          if (this.isDebugMode) {
-            console.log(`[ResourceLoader] Loading fallback asset '${id}' from '${fallbackPath}'`);
-          }
+          console.log(`[Diagnostic] [ResourceLoader] Attempting fallback asset '${id}' from '${fallbackPath}'`);
           if (id === 'heroBackground') {
             this.debugStatus.backgroundUrl = fallbackPath;
           }
@@ -172,6 +179,7 @@ export default class ResourceLoader extends EventEmitter {
             fallbackPath,
             (fallbackFile) => {
               this.items[id] = fallbackFile;
+              this.assetMetrics[id].status = 'FALLBACK_SUCCESS';
               if (id === 'heroBackground') {
                 this.debugStatus.textureLoaded = true;
                 this.debugStatus.textureError = `Fallback active (${fallbackPath})`;
@@ -179,7 +187,8 @@ export default class ResourceLoader extends EventEmitter {
             },
             undefined,
             (fallbackErr) => {
-              console.error(`[ResourceLoader] Critical: Fallback asset also failed for '${id}'`, fallbackErr);
+              console.error(`[Diagnostic] [ResourceLoader] Critical: Fallback asset also failed for '${id}'`, fallbackErr);
+              this.assetMetrics[id].status = 'CRITICAL_FAILURE';
               if (id === 'heroBackground') {
                 this.debugStatus.textureLoaded = false;
                 this.debugStatus.textureError = `Critical: ${fallbackErr?.message || 'Both primary and fallback failed'}`;
@@ -193,9 +202,7 @@ export default class ResourceLoader extends EventEmitter {
         this.debugStatus.backgroundUrl = path;
       }
 
-      if (this.isDebugMode) {
-        console.log(`[ResourceLoader] Loading asset '${id}' (${type}) from URL:`, path);
-      }
+      console.log(`[Diagnostic] [ResourceLoader] Requesting asset '${id}' (${type}) path:`, path);
 
       switch (type) {
         case 'gltfModelCompressed':
@@ -214,7 +221,7 @@ export default class ResourceLoader extends EventEmitter {
           this.loaders.cubeTextureLoader.load(path, onLoad, undefined, onError);
           break;
         default:
-          console.warn(`[ResourceLoader] Unknown asset type: ${type}`);
+          console.warn(`[Diagnostic] [ResourceLoader] Unknown asset type: ${type}`);
       }
     }
   }
