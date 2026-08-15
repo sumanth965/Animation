@@ -19,6 +19,9 @@ export default class ResourceLoader extends EventEmitter {
       textureError: 'none',
     };
 
+    this.startTime = performance.now();
+    this.criticalLoadedTime = null;
+
     this.sources.forEach((src) => {
       const paths = Array.isArray(src.path) ? src.path : [src.path];
       paths.forEach((url) => {
@@ -72,6 +75,8 @@ export default class ResourceLoader extends EventEmitter {
     this.manager.onLoad = () => {
       if (this.isFinished) return;
       this.isFinished = true;
+      this.criticalLoadedTime = performance.now() - this.startTime;
+      console.log(`[Performance] Critical assets loaded in: ${this.criticalLoadedTime.toFixed(1)}ms`);
       this.trigger('loaded', {
         itemsLoaded: this.toLoad,
         itemsTotal: this.toLoad,

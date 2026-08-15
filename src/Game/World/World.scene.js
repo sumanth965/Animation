@@ -36,23 +36,9 @@ export default class World {
     }
 
     try {
-      this.flowField = new FlowField();
-    } catch (e) {
-      console.warn('[World] FlowField initialization warning:', e);
-    }
-
-    try {
       this.dolphin = new Dolphin();
     } catch (e) {
       console.warn('[World] Dolphin initialization warning:', e);
-    }
-
-    try {
-      if (this.dolphin) {
-        this.wakeParticles = new WakeParticles(this.dolphin);
-      }
-    } catch (e) {
-      console.warn('[World] WakeParticles initialization warning:', e);
     }
 
     try {
@@ -62,18 +48,39 @@ export default class World {
     }
 
     try {
-      this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
-    } catch (e) {
-      console.warn('[World] FishSchool initialization warning:', e);
-    }
-
-    try {
       if (this.dolphin && this.city) {
         this.eventManager = new EventManager(this.dolphin, this.city);
       }
     } catch (e) {
       console.warn('[World] EventManager initialization warning:', e);
     }
+
+    // Progressive background initialization of non-critical effects after the first hero frame
+    setTimeout(() => {
+      try {
+        if (!this.flowField) {
+          this.flowField = new FlowField();
+        }
+      } catch (e) {
+        console.warn('[World] FlowField progressive initialization warning:', e);
+      }
+
+      try {
+        if (this.dolphin && !this.wakeParticles) {
+          this.wakeParticles = new WakeParticles(this.dolphin);
+        }
+      } catch (e) {
+        console.warn('[World] WakeParticles progressive initialization warning:', e);
+      }
+
+      try {
+        if (!this.fishSchool) {
+          this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
+        }
+      } catch (e) {
+        console.warn('[World] FishSchool progressive initialization warning:', e);
+      }
+    }, 150);
     
     // Configurable camera settings for smooth dynamic follow
     this.cameraConfig = {
