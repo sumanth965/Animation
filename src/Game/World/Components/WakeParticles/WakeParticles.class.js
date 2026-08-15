@@ -110,47 +110,53 @@ export default class WakeParticles {
   }
 
   initGPGPU() {
-    this.gpuCompute = new GPUComputationRenderer(
-      this.WIDTH,
-      this.WIDTH,
-      this.renderer,
-    );
+    this.enabled = true;
+    try {
+      this.gpuCompute = new GPUComputationRenderer(
+        this.WIDTH,
+        this.WIDTH,
+        this.renderer,
+      );
 
-    const dtPosition = this.gpuCompute.createTexture();
-    const dtSpawnPoints = this.gpuCompute.createTexture();
-    this.fillSpawnTexture(dtSpawnPoints);
-    this.fillInitialPositions(dtPosition);
+      const dtPosition = this.gpuCompute.createTexture();
+      const dtSpawnPoints = this.gpuCompute.createTexture();
+      this.fillSpawnTexture(dtSpawnPoints);
+      this.fillInitialPositions(dtPosition);
 
-    this.positionVariable = this.gpuCompute.addVariable(
-      'uParticles',
-      simulationShader,
-      dtPosition,
-    );
+      this.positionVariable = this.gpuCompute.addVariable(
+        'uParticles',
+        simulationShader,
+        dtPosition,
+      );
 
-    this.gpuCompute.setVariableDependencies(this.positionVariable, [
-      this.positionVariable,
-    ]);
+      this.gpuCompute.setVariableDependencies(this.positionVariable, [
+        this.positionVariable,
+      ]);
 
-    const uniforms = this.positionVariable.material.uniforms;
-    uniforms.uTime = { value: 0 };
-    uniforms.uDeltaTime = { value: 0 };
-    uniforms.uSpawnPoints = { value: dtSpawnPoints };
-    uniforms.uBackwardSpeed = { value: this.config.backwardSpeed };
-    uniforms.uTurbulence = { value: this.config.turbulence };
-    uniforms.uSpread = { value: this.config.spread };
-    uniforms.uCurlStrength = { value: this.config.curlStrength };
-    uniforms.uSpiralIntensity = { value: this.config.spiralIntensity };
-    uniforms.uBuoyancy = { value: this.config.buoyancy };
-    uniforms.uDrag = { value: this.config.drag };
-    uniforms.uDolphinPosition = { value: new THREE.Vector3(0, 0, 0) };
-    uniforms.uDolphinDirection = { value: new THREE.Vector3(0, 0, 1) };
+      const uniforms = this.positionVariable.material.uniforms;
+      uniforms.uTime = { value: 0 };
+      uniforms.uDeltaTime = { value: 0 };
+      uniforms.uSpawnPoints = { value: dtSpawnPoints };
+      uniforms.uBackwardSpeed = { value: this.config.backwardSpeed };
+      uniforms.uTurbulence = { value: this.config.turbulence };
+      uniforms.uSpread = { value: this.config.spread };
+      uniforms.uCurlStrength = { value: this.config.curlStrength };
+      uniforms.uSpiralIntensity = { value: this.config.spiralIntensity };
+      uniforms.uBuoyancy = { value: this.config.buoyancy };
+      uniforms.uDrag = { value: this.config.drag };
+      uniforms.uDolphinPosition = { value: new THREE.Vector3(0, 0, 0) };
+      uniforms.uDolphinDirection = { value: new THREE.Vector3(0, 0, 1) };
 
-    const error = this.gpuCompute.init();
-    if (error !== null) {
-      console.error('GPGPU init error:', error);
+      const error = this.gpuCompute.init();
+      if (error !== null) {
+        console.warn('GPGPU init warning:', error);
+        this.enabled = false;
+      }
+      this.spawnTexture = dtSpawnPoints;
+    } catch (e) {
+      console.warn('WakeParticles GPGPU unsupported on this device GPU:', e);
+      this.enabled = false;
     }
-
-    this.spawnTexture = dtSpawnPoints;
   }
 
   fillSpawnTexture(texture) {
@@ -229,6 +235,7 @@ export default class WakeParticles {
   }
 
   update() {
+    if (!this.enabled || !this.gpuCompute || !this.positionVariable) return;
     const isSettled = this.game.scroll.isSettled;
     
     // Suspend GPGPU computation entirely if settled for more than 3 seconds

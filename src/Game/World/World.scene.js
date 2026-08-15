@@ -17,16 +17,63 @@ export default class World {
     this.scene.fog = new THREE.Fog(0x020a16, 5, 28);
     this.scene.background = null;
 
-    this.lighting = new Lighting({ helperEnabled: false });
+    try {
+      this.lighting = new Lighting({ helperEnabled: false });
+    } catch (e) {
+      console.warn('[World] Lighting initialization warning:', e);
+    }
 
-    this.seabed = new Seabed();
-    this.wormhole = new Wormhole();
-    this.flowField = new FlowField();
-    this.dolphin = new Dolphin();
-    this.wakeParticles = new WakeParticles(this.dolphin);
-    this.city = new CityManager();
-    this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
-    this.eventManager = new EventManager(this.dolphin, this.city);
+    try {
+      this.seabed = new Seabed();
+    } catch (e) {
+      console.warn('[World] Seabed initialization warning:', e);
+    }
+
+    try {
+      this.wormhole = new Wormhole();
+    } catch (e) {
+      console.warn('[World] Wormhole initialization warning:', e);
+    }
+
+    try {
+      this.flowField = new FlowField();
+    } catch (e) {
+      console.warn('[World] FlowField initialization warning:', e);
+    }
+
+    try {
+      this.dolphin = new Dolphin();
+    } catch (e) {
+      console.warn('[World] Dolphin initialization warning:', e);
+    }
+
+    try {
+      if (this.dolphin) {
+        this.wakeParticles = new WakeParticles(this.dolphin);
+      }
+    } catch (e) {
+      console.warn('[World] WakeParticles initialization warning:', e);
+    }
+
+    try {
+      this.city = new CityManager();
+    } catch (e) {
+      console.warn('[World] CityManager initialization warning:', e);
+    }
+
+    try {
+      this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
+    } catch (e) {
+      console.warn('[World] FishSchool initialization warning:', e);
+    }
+
+    try {
+      if (this.dolphin && this.city) {
+        this.eventManager = new EventManager(this.dolphin, this.city);
+      }
+    } catch (e) {
+      console.warn('[World] EventManager initialization warning:', e);
+    }
     
     // Configurable camera settings for smooth dynamic follow
     this.cameraConfig = {
@@ -44,11 +91,11 @@ export default class World {
   }
 
   update() {
-    const state = this.game.scroll.state;
-    const isCinematic = state === 'SCROLLING' || Boolean(this.eventManager.selected);
+    const state = this.game.scroll ? this.game.scroll.state : 'IDLE_HERO';
+    const isCinematic = state === 'SCROLLING' || Boolean(this.eventManager && this.eventManager.selected);
 
     // Dynamic fog adjustment based on scroll progress to gradually reveal the city
-    if (this.scene.fog) {
+    if (this.scene.fog && this.game.scroll) {
       const progress = this.game.scroll.progress;
       if (progress < 0.15) {
         const t = progress / 0.15;
@@ -64,52 +111,59 @@ export default class World {
       }
     }
 
-    const scrollDirty = this.game.scroll.dirty;
+    const scrollDirty = this.game.scroll ? this.game.scroll.dirty : false;
     // Get camera frustum for culling
-    const camera = this.game.camera.cameraInstance;
+    const camera = this.game.camera ? this.game.camera.cameraInstance : null;
     const frustum = new THREE.Frustum();
-    const cameraMatrix = new THREE.Matrix4();
-    cameraMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    frustum.setFromProjectionMatrix(cameraMatrix);
+    if (camera) {
+      const cameraMatrix = new THREE.Matrix4();
+      cameraMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(cameraMatrix);
+    }
 
     // Update order optimized: simpler systems first, complex ones last
     if (this.lighting && isCinematic) {
-      this.lighting.update();
+      try { this.lighting.update(); } catch (e) { console.warn('[World] Lighting update warning:', e); }
     }
-    // Keep a low-frequency ambient seabed motion in the hero, but avoid
-    // updating its uniforms every frame while the view is at rest.
+    
     this._ambientFrame = (this._ambientFrame || 0) + 1;
     if (this.seabed && (isCinematic || this._ambientFrame % 8 === 0)) {
-      this.seabed.update();
+      try { this.seabed.update(); } catch (e) { console.warn('[World] Seabed update warning:', e); }
     }
     if (this.wormhole && isCinematic) {
-      this.wormhole.update();
+      try { this.wormhole.update(); } catch (e) { console.warn('[World] Wormhole update warning:', e); }
     }
-    if (this.city && isCinematic && (scrollDirty || !this.game.scroll.isSettled)) this.city.update();
+    if (this.city && isCinematic && (scrollDirty || !this.game.scroll.isSettled)) {
+      try { this.city.update(); } catch (e) { console.warn('[World] City update warning:', e); }
+    }
     if (this.flowField && isCinematic) {
-      // Only update FlowField if visible
-      if (this.flowField.points && frustum.intersectsObject(this.flowField.points)) {
-        this.flowField.update();
-      }
+      try {
+        if (this.flowField.points && frustum.intersectsObject(this.flowField.points)) {
+          this.flowField.update();
+        }
+      } catch (e) { console.warn('[World] FlowField update warning:', e); }
     }
     if (this.fishSchool && isCinematic) {
-      this.fishSchool.update();
+      try { this.fishSchool.update(); } catch (e) { console.warn('[World] FishSchool update warning:', e); }
     }
     if (this.dolphin) {
-      this.dolphin.update();
-      
-      const cameraSettled = this.isCameraFullySettled();
-      if (isCinematic || !this.cameraReady) {
-        this.updateJourneyCamera();
-        this.eventManager.update();
-        this.cameraReady = true;
-      }
+      try {
+        this.dolphin.update();
+        const cameraSettled = this.isCameraFullySettled();
+        if (isCinematic || !this.cameraReady) {
+          this.updateJourneyCamera();
+          if (this.eventManager) this.eventManager.update();
+          this.cameraReady = true;
+        }
+      } catch (e) { console.warn('[World] Dolphin update warning:', e); }
     }
     if (this.wakeParticles) {
-      this.wakeParticles.particleSystem.visible = isCinematic;
-      if (isCinematic) {
-      this.wakeParticles.update();
-      }
+      try {
+        this.wakeParticles.particleSystem.visible = isCinematic;
+        if (isCinematic) {
+          this.wakeParticles.update();
+        }
+      } catch (e) { console.warn('[World] WakeParticles update warning:', e); }
     }
   }
 

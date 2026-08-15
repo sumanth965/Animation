@@ -3,6 +3,36 @@ import ResourceLoader from './Game/Utils/ResourceLoader.class';
 import ASSETS from './config/assets.js';
 
 // Global error handlers for production runtime diagnosis
+const showInitErrorBanner = (stage, err) => {
+  let banner = document.getElementById('init-error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'init-error-banner';
+    Object.assign(banner.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      right: '0',
+      zIndex: '100000',
+      background: 'rgba(180, 20, 20, 0.95)',
+      color: '#ffffff',
+      padding: '12px 20px',
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      lineHeight: '1.4',
+      borderBottom: '2px solid #ff5555',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+    });
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `
+    <b>[INITIALIZATION DIAGNOSTIC NOTICE]</b><br>
+    Failed Stage: <b>${stage}</b><br>
+    Message: ${err?.message || err || 'Unknown Error'}<br>
+    <small style="opacity:0.85;">Check browser console for full stack trace.</small>
+  `;
+};
+
 window.addEventListener('error', (event) => {
   console.error('[Runtime Error]', event.message, event.filename, event.lineno, event.error);
 });
@@ -96,6 +126,7 @@ resources.on('loaded', () => {
     console.log('[Startup] Three.js Game Engine initialized successfully.');
   } catch (err) {
     console.error('[Startup Error] Critical failure during Game engine initialization:', err);
+    showInitErrorBanner('Game Engine Setup', err);
   }
 });
 
