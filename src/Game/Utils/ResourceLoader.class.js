@@ -5,12 +5,19 @@ import * as THREE from 'three';
 import EventEmitter from './EventEmitter.class';
 
 export default class ResourceLoader extends EventEmitter {
-  constructor(assets, isDebugMode) {
+  constructor(assets, isDebugMode = false) {
     super();
 
+    this.isDebugMode = isDebugMode;
     this.sources = assets;
     this.items = {};
     this.sourceByUrl = {};
+    this.isFinished = false;
+    this.debugStatus = {
+      backgroundUrl: '',
+      textureLoaded: false,
+      textureError: 'none',
+    };
 
     this.sources.forEach((src) => {
       const paths = Array.isArray(src.path) ? src.path : [src.path];
@@ -24,7 +31,7 @@ export default class ResourceLoader extends EventEmitter {
           this.sourceByUrl[abs] = src;
         }
       } catch (e) {
-        console.error('Error adding source by URL:', e);
+        console.error('[ResourceLoader] Error adding source by URL:', e);
       }
     });
 
@@ -63,6 +70,8 @@ export default class ResourceLoader extends EventEmitter {
     };
 
     this.manager.onLoad = () => {
+      if (this.isFinished) return;
+      this.isFinished = true;
       this.trigger('loaded', {
         itemsLoaded: this.toLoad,
         itemsTotal: this.toLoad,
@@ -81,12 +90,20 @@ export default class ResourceLoader extends EventEmitter {
       const src = this.sourceByUrl[urlKey];
       const id = src ? src.id : urlKey;
 
+      console.error(`[ResourceLoader] Load error for asset ${id} at URL: ${urlKey}`);
+
       this.trigger('error', {
         id,
         url: urlKey,
         itemsLoaded: this.loaded,
         itemsTotal: this.toLoad,
       });
+
+      // Advance progress counter even on error so loading never hangs
+      this.loaded++;
+      if (this.loaded >= this.toLoad) {
+        setTimeout(() => this.manager.onLoad(), 100);
+      }
     };
 
     this.setLoaders();
@@ -95,13 +112,22 @@ export default class ResourceLoader extends EventEmitter {
     if (this.toLoad === 0) {
       setTimeout(() => this.manager.onLoad(), 0);
     }
+
+    // Fail-safe 4.5 second timeout to guarantee page opens even on slow/broken connections
+    setTimeout(() => {
+      if (!this.isFinished) {
+        console.warn('[ResourceLoader] Loading timeout reached. Force starting 3D experience...');
+        this.manager.onLoad();
+      }
+    }, 4500);
   }
 
   setLoaders() {
     this.loaders = {};
 
     const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('/draco/');
+    // Use Google CDN versioned Draco decoders to ensure cross-platform WASM compatibility
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
     this.loaders.dracoLoader = dracoLoader;
 
     this.loaders.gltfCompressLoader = new GLTFLoader(this.manager);
@@ -115,31 +141,75 @@ export default class ResourceLoader extends EventEmitter {
 
   initLoading() {
     for (const source of this.sources) {
-      const { type, path, id } = source;
+      const { type, path, id, fallbackPath } = source;
 
       const onLoad = (file) => {
         this.items[id] = file;
+        if (id === 'heroBackground') {
+          this.debugStatus.textureLoaded = true;
+          this.debugStatus.textureError = 'none';
+        }
       };
-      const onProgress = undefined;
+
+      const onError = (err) => {
+        console.warn(`[ResourceLoader] Failed loading primary asset '${id}' from '${path}'. Attempting fallback...`, err);
+        if (id === 'heroBackground') {
+          this.debugStatus.textureError = `Failed: ${path}`;
+        }
+        if (fallbackPath) {
+          if (this.isDebugMode) {
+            console.log(`[ResourceLoader] Loading fallback asset '${id}' from '${fallbackPath}'`);
+          }
+          if (id === 'heroBackground') {
+            this.debugStatus.backgroundUrl = fallbackPath;
+          }
+          this.loaders.textureLoader.load(
+            fallbackPath,
+            (fallbackFile) => {
+              this.items[id] = fallbackFile;
+              if (id === 'heroBackground') {
+                this.debugStatus.textureLoaded = true;
+                this.debugStatus.textureError = `Fallback active (${fallbackPath})`;
+              }
+            },
+            undefined,
+            (fallbackErr) => {
+              console.error(`[ResourceLoader] Critical: Fallback asset also failed for '${id}'`, fallbackErr);
+              if (id === 'heroBackground') {
+                this.debugStatus.textureLoaded = false;
+                this.debugStatus.textureError = `Critical: ${fallbackErr?.message || 'Both primary and fallback failed'}`;
+              }
+            }
+          );
+        }
+      };
+
+      if (id === 'heroBackground') {
+        this.debugStatus.backgroundUrl = path;
+      }
+
+      if (this.isDebugMode) {
+        console.log(`[ResourceLoader] Loading asset '${id}' (${type}) from URL:`, path);
+      }
 
       switch (type) {
         case 'gltfModelCompressed':
-          this.loaders.gltfCompressLoader.load(path, onLoad, onProgress);
+          this.loaders.gltfCompressLoader.load(path, onLoad, undefined, onError);
           break;
         case 'gltfModel':
-          this.loaders.gltfLoader.load(path, onLoad, onProgress);
+          this.loaders.gltfLoader.load(path, onLoad, undefined, onError);
           break;
         case 'texture':
-          this.loaders.textureLoader.load(path, onLoad, onProgress);
+          this.loaders.textureLoader.load(path, onLoad, undefined, onError);
           break;
         case 'HDRITexture':
-          this.loaders.hdriLoader.load(path, onLoad, onProgress);
+          this.loaders.hdriLoader.load(path, onLoad, undefined, onError);
           break;
         case 'cubeMap':
-          this.loaders.cubeTextureLoader.load(path, onLoad, onProgress);
+          this.loaders.cubeTextureLoader.load(path, onLoad, undefined, onError);
           break;
         default:
-          console.warn(`Unknown asset type: ${type}`);
+          console.warn(`[ResourceLoader] Unknown asset type: ${type}`);
       }
     }
   }

@@ -133,18 +133,26 @@ export default class Dolphin {
   }
 
   setModelInstance() {
-    this.dolphin = this.modelResource.scene;
+    this.dolphin = this.modelResource ? this.modelResource.scene : null;
 
-    this.dolphin.traverse((child) => {
-      if (child.isMesh) {
-        child.material = this.material;
-      }
-    });
+    if (this.dolphin) {
+      this.dolphin.traverse((child) => {
+        if (child.isMesh) {
+          child.material = this.material;
+        }
+      });
+    } else {
+      console.warn('Dolphin GLB model not loaded, creating fallback mesh.');
+      const geom = new THREE.ConeGeometry(0.5, 2.2, 16);
+      geom.rotateX(Math.PI / 2);
+      this.dolphin = new THREE.Mesh(geom, this.material);
+    }
 
     this.scene.add(this.dolphin);
   }
 
   setAnimation() {
+    if (!this.modelResource || !this.dolphin) return;
     this.animation = {};
     this.animation.mixer = new THREE.AnimationMixer(this.dolphin);
 
