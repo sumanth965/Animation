@@ -48,6 +48,14 @@ export default class World {
       this.cityInitializationTime += (performance.now() - tCity);
     } catch (e) { console.warn('[Diagnostic] CityManager core setup warning:', e); }
 
+    // Synchronously create EventManager so safe selected state exists from frame 1
+    try {
+      this.eventManager = new EventManager(this.dolphin, this.city);
+    } catch (e) { console.warn('[Diagnostic] EventManager synchronous setup warning:', e); }
+
+    this._frustum = new THREE.Frustum();
+    this._cameraMatrix = new THREE.Matrix4();
+
     // 2. Schedule progressive background initialization batches across animation frames
     this.scheduleProgressiveBatches();
     
@@ -79,10 +87,8 @@ export default class World {
         this.cityInitializationTime += (performance.now() - t0);
       },
       () => {
-        if (this.dolphin && this.city && !this.eventManager) {
-          try {
-            this.eventManager = new EventManager(this.dolphin, this.city);
-          } catch (e) { console.warn('[Diagnostic] EventManager progressive warning:', e); }
+        if (this.eventManager && this.city) {
+          this.eventManager.city = this.city;
         }
       },
       () => {
@@ -180,11 +186,10 @@ export default class World {
     const scrollDirty = this.game.scroll ? this.game.scroll.dirty : false;
     // Get camera frustum for culling
     const camera = this.game.camera ? this.game.camera.cameraInstance : null;
-    const frustum = new THREE.Frustum();
-    if (camera) {
-      const cameraMatrix = new THREE.Matrix4();
-      cameraMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-      frustum.setFromProjectionMatrix(cameraMatrix);
+    const frustum = this._frustum || new THREE.Frustum();
+    if (camera && this._cameraMatrix) {
+      this._cameraMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(this._cameraMatrix);
     }
 
     // Update order optimized: simpler systems first, complex ones last
@@ -336,7 +341,7 @@ export default class World {
     const closeFocus = lookAheadPos.clone();
     
     // 4. Override camera targets when approaching Event Buildings
-    const selectedEvent = this.eventManager.selected;
+    const selectedEvent = this.eventManager ? this.eventManager.selected : null;
     if (selectedEvent && selectedEvent.markerPosition) {
       const markerPos = selectedEvent.markerPosition;
       

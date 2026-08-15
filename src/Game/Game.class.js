@@ -128,14 +128,31 @@ export default class Game {
   update() {
     const frameStart = performance.now();
 
+    const tMouse = performance.now();
     if (this.mouse) this.mouse.update(this.time.delta);
+    const mouseMs = performance.now() - tMouse;
+
+    const tScroll = performance.now();
     if (this.scroll) this.scroll.update(this.time.delta);
+    const scrollMs = performance.now() - tScroll;
+
+    const tCamera = performance.now();
     if (this.camera && this.mouse) this.camera.update(this.mouse, this.time.delta);
+    const cameraMs = performance.now() - tCamera;
+
+    const tWorld = performance.now();
     if (this.world) this.world.update();
+    const worldMs = performance.now() - tWorld;
+
+    const tPP = performance.now();
     if (this.postProcessing && this.postProcessing.enabled) {
       this.postProcessing.update(this.time.elapsed, this.time.delta);
     }
+    const postProcessingMs = performance.now() - tPP;
+
+    const tRender = performance.now();
     if (this.renderer) this.renderer.update();
+    const renderMs = performance.now() - tRender;
 
     if (!this.hasFirstRendered && this.gameStartTime) {
       this.hasFirstRendered = true;
@@ -145,6 +162,17 @@ export default class Game {
 
     const frameDuration = performance.now() - frameStart;
     this.longestAnimationFrameDuration = Math.max(this.longestAnimationFrameDuration || 0, frameDuration);
+
+    if (frameDuration > 25) {
+      console.warn(`[Performance Profile] Long animation frame: ${frameDuration.toFixed(2)}ms`, {
+        mouseMs: mouseMs.toFixed(2),
+        scrollMs: scrollMs.toFixed(2),
+        cameraMs: cameraMs.toFixed(2),
+        worldMs: worldMs.toFixed(2),
+        postProcessingMs: postProcessingMs.toFixed(2),
+        renderMs: renderMs.toFixed(2)
+      });
+    }
   }
 
   destroy() {

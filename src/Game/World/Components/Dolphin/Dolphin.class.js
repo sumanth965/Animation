@@ -501,11 +501,44 @@ export default class Dolphin {
       },
     });
 
+    this.sparklesGeometry = new THREE.BufferGeometry();
+    this.sparklesGeometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(positions, 3)
+    );
+    this.sparklesGeometry.setAttribute(
+      'aRandom',
+      new THREE.BufferAttribute(randoms, 1)
+    );
+    this.sparklesGeometry.setAttribute(
+      'aSize',
+      new THREE.BufferAttribute(sizes, 1)
+    );
+
+    this.sparklesMaterial = new THREE.ShaderMaterial({
+      vertexShader: sparkleVertexShader,
+      fragmentShader: sparkleFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0 },
+        uSize: { value: 30.0 },
+        uColor1: { value: new THREE.Color(0x15dfff) },
+        uColor2: { value: new THREE.Color(0x4d8dff) },
+        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        uVelocity: { value: 0 },
+      },
+    });
+
     this.sparkles = new THREE.Points(
       this.sparklesGeometry,
       this.sparklesMaterial
     );
     this.sparkles.frustumCulled = false;
+
+    this.skinnedPositionsPool = Array.from({ length: this.sparkleCount }, () => new THREE.Vector3());
+    this._tmpColor = new THREE.Color();
 
     this.setupConnectionLines();
 
@@ -579,7 +612,6 @@ export default class Dolphin {
     const normalV = this._tmpNormal;
 
     const posAttr = this.dolphinMesh.geometry.getAttribute('position');
-    const skinnedPositions = [];
 
     for (let i = 0; i < this.sparkleCount; i++) {
       const data = this.sampledData[i];
@@ -610,12 +642,15 @@ export default class Dolphin {
       positionAttribute.array[i * 3 + 1] = skinned.y;
       positionAttribute.array[i * 3 + 2] = skinned.z;
 
-      skinnedPositions.push(skinned.clone());
+      if (!this.skinnedPositionsPool[i]) {
+        this.skinnedPositionsPool[i] = new THREE.Vector3();
+      }
+      this.skinnedPositionsPool[i].copy(skinned);
     }
 
     positionAttribute.needsUpdate = true;
 
-    this.updateConnectionLines(skinnedPositions);
+    this.updateConnectionLines(this.skinnedPositionsPool);
     
     // Reset frame flags for next frame
     this._skeletonUpdatedThisFrame = false;
@@ -627,85 +662,56 @@ export default class Dolphin {
     const color1 = this.sparklesMaterial.uniforms.uColor1.value;
     const color2 = this.sparklesMaterial.uniforms.uColor2.value;
     const connectionDistSq = this.connectionDistance * this.connectionDistance;
+    const maxLines = this.linePositions.length / 6;
 
     // Dynamic line opacity based on velocity
     const velocityIntensity = THREE.MathUtils.smoothstep(this.game.scroll.sharedVelocity, 0, 1.5);
     this.linesMaterial.opacity = 0.52 + velocityIntensity * 0.38;
 
-    // Simple spatial grid optimization
-    const gridSize = this.connectionDistance * 2;
-    const grid = new Map();
-    
-    // Place particles in grid cells
-    for (let i = 0; i < positions.length; i++) {
-      const pos = positions[i];
-      const cellX = Math.floor(pos.x / gridSize);
-      const cellY = Math.floor(pos.y / gridSize);
-      const cellZ = Math.floor(pos.z / gridSize);
-      const cellKey = `${cellX},${cellY},${cellZ}`;
-      
-      if (!grid.has(cellKey)) {
-        grid.set(cellKey, []);
-      }
-      grid.get(cellKey).push({ index: i, position: pos });
-    }
+    const count = Math.min(positions.length, this.sparkleCount);
 
-    // Check connections only within neighboring cells
-    for (let i = 0; i < positions.length; i++) {
-      const pos = positions[i];
-      const cellX = Math.floor(pos.x / gridSize);
-      const cellY = Math.floor(pos.y / gridSize);
-      const cellZ = Math.floor(pos.z / gridSize);
-      
-      // Check current cell and 26 neighboring cells
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dz = -1; dz <= 1; dz++) {
-            const neighborKey = `${cellX + dx},${cellY + dy},${cellZ + dz}`;
-            const neighbors = grid.get(neighborKey);
-            
-            if (neighbors) {
-              for (const neighbor of neighbors) {
-                const j = neighbor.index;
-                if (j <= i) continue; // Avoid duplicate pairs
-                
-                const distSq = pos.distanceToSquared(neighbor.position);
-                
-                if (distSq < connectionDistSq) {
-                  const alpha = 1.0 - Math.sqrt(distSq) / this.connectionDistance;
+    for (let i = 0; i < count; i++) {
+      const p1 = positions[i];
+      if (!p1) continue;
+      for (let j = i + 1; j < count; j++) {
+        const p2 = positions[j];
+        if (!p2) continue;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dz = p2.z - p1.z;
+        const distSq = dx * dx + dy * dy + dz * dz;
 
-                  this.linePositions[lineIndex * 6] = pos.x;
-                  this.linePositions[lineIndex * 6 + 1] = pos.y;
-                  this.linePositions[lineIndex * 6 + 2] = pos.z;
+        if (distSq < connectionDistSq) {
+          const alpha = 1.0 - Math.sqrt(distSq) / this.connectionDistance;
+          const idx = lineIndex * 6;
 
-                  this.linePositions[lineIndex * 6 + 3] = neighbor.position.x;
-                  this.linePositions[lineIndex * 6 + 4] = neighbor.position.y;
-                  this.linePositions[lineIndex * 6 + 5] = neighbor.position.z;
+          this.linePositions[idx] = p1.x;
+          this.linePositions[idx + 1] = p1.y;
+          this.linePositions[idx + 2] = p1.z;
 
-                  const mixedColor = color1
-                    .clone()
-                    .lerp(color2, this.sampledData[i].random);
-                  this.lineColors[lineIndex * 6] = mixedColor.r * alpha;
-                  this.lineColors[lineIndex * 6 + 1] = mixedColor.g * alpha;
-                  this.lineColors[lineIndex * 6 + 2] = mixedColor.b * alpha;
+          this.linePositions[idx + 3] = p2.x;
+          this.linePositions[idx + 4] = p2.y;
+          this.linePositions[idx + 5] = p2.z;
 
-                  this.lineColors[lineIndex * 6 + 3] = mixedColor.r * alpha;
-                  this.lineColors[lineIndex * 6 + 4] = mixedColor.g * alpha;
-                  this.lineColors[lineIndex * 6 + 5] = mixedColor.b * alpha;
+          if (!this._tmpColor) this._tmpColor = new THREE.Color();
+          this._tmpColor.copy(color1).lerp(color2, this.sampledData[i].random);
+          const r = this._tmpColor.r * alpha;
+          const g = this._tmpColor.g * alpha;
+          const b = this._tmpColor.b * alpha;
 
-                  lineIndex++;
+          this.lineColors[idx] = r;
+          this.lineColors[idx + 1] = g;
+          this.lineColors[idx + 2] = b;
 
-                  if (lineIndex >= this.linePositions.length / 6) break;
-                }
-              }
-            }
-            if (lineIndex >= this.linePositions.length / 6) break;
-          }
-          if (lineIndex >= this.linePositions.length / 6) break;
+          this.lineColors[idx + 3] = r;
+          this.lineColors[idx + 4] = g;
+          this.lineColors[idx + 5] = b;
+
+          lineIndex++;
+          if (lineIndex >= maxLines) break;
         }
-        if (lineIndex >= this.linePositions.length / 6) break;
       }
-      if (lineIndex >= this.linePositions.length / 6) break;
+      if (lineIndex >= maxLines) break;
     }
 
     this.linesGeometry.attributes.position.needsUpdate = true;
