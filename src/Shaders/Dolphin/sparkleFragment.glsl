@@ -1,6 +1,7 @@
 uniform float uTime;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
+uniform float uVelocity;
 
 varying float vRandom;
 
@@ -14,8 +15,9 @@ void main() {
     vec3 color = mix(uColor1, uColor2, colorMix);
 
     float twinkle = sin(uTime * 3.0 + vRandom * 20.0) * 0.3 + 0.7;
+    twinkle *= (1.0 + uVelocity * 0.5);
 
-    gl_FragColor = vec4(color, strength * twinkle);
+    gl_FragColor = vec4(color, strength * twinkle * (0.6 + uVelocity * 0.8));
 
     #include <colorspace_fragment>
 }

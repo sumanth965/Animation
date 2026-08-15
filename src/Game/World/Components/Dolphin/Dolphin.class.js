@@ -60,6 +60,7 @@ export default class Dolphin {
       uniforms: {
         uTime: { value: 0 },
         uBaseColor: { value: new THREE.Color(0x6fd3fb) },
+        uVelocity: { value: 0 },
       },
     });
   }
@@ -268,6 +269,14 @@ export default class Dolphin {
 
     this.updateJourney();
 
+    const velocityIntensity = THREE.MathUtils.smoothstep(this.game.scroll.sharedVelocity, 0, 1.5);
+    if (this.material.uniforms.uVelocity) {
+      this.material.uniforms.uVelocity.value = velocityIntensity;
+    }
+    if (this.sparklesMaterial?.uniforms.uVelocity) {
+      this.sparklesMaterial.uniforms.uVelocity.value = velocityIntensity;
+    }
+
     if (this.sparkles && this.dolphinMesh) {
       this.updateSparklePositions();
     }
@@ -280,8 +289,23 @@ export default class Dolphin {
   updateJourney() {
     const scrollProgress = this.game.scroll.progress;
     const destination = this.focusProgress === null ? scrollProgress : this.focusProgress;
+    
+    const isDolphinSettled = this.game.scroll.isSettled && 
+                             (this.focusProgress === null || Math.abs(this.journeyProgress - destination) < 0.0001);
+    
+    if (isDolphinSettled && this._journeyProgressSettled) {
+      const pulse = Math.sin(this.time.elapsedTime * 4.2) * .025;
+      this.dolphin.rotation.z = this._settledRotationZ + pulse;
+      this.dolphinVelocity = 0;
+      return;
+    }
+
+    const beforeJourney = this.journeyProgress;
     const speed = this.focusProgress === null ? 2.7 : 1.25;
     this.journeyProgress = THREE.MathUtils.damp(this.journeyProgress, destination, speed, this.time.delta);
+    
+    this.dolphinVelocity = this.time.delta > 0 ? (this.journeyProgress - beforeJourney) / this.time.delta : 0;
+    
     const { position, tangent } = this.path.getPoint(
       this.journeyProgress,
       this.time.elapsedTime
@@ -294,6 +318,9 @@ export default class Dolphin {
     this.dolphin.quaternion.slerp(this.targetQuaternion, 1 - Math.exp(-this.time.delta * 5));
     const pulse = Math.sin(this.time.elapsedTime * 4.2) * .025;
     this.dolphin.rotation.z += pulse;
+
+    this._settledRotationZ = this.dolphin.rotation.z - pulse;
+    this._journeyProgressSettled = isDolphinSettled;
   }
 
   focusEvent(progress) { this.focusProgress = progress; }
@@ -388,6 +415,7 @@ export default class Dolphin {
         uColor1: { value: new THREE.Color(0x327fe2) },
         uColor2: { value: new THREE.Color(0x719bf8) },
         uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        uVelocity: { value: 0 },
       },
     });
 
@@ -435,6 +463,18 @@ export default class Dolphin {
 
   updateSparklePositions() {
     if (!this.dolphinMesh || !this.sparklesGeometry) return;
+
+    // Throttle updates when settled to save CPU skinning overhead
+    const isSettled = this.game.scroll.isSettled && 
+                     (this.focusProgress === null || Math.abs(this.journeyProgress - (this.focusProgress === null ? this.game.scroll.progress : this.focusProgress)) < 0.0001);
+                     
+    if (isSettled) {
+      this._sparkleFrameSkip = (this._sparkleFrameSkip || 0) + 1;
+      if (this._sparkleFrameSkip < 5) {
+        return;
+      }
+      this._sparkleFrameSkip = 0;
+    }
 
     const positionAttribute = this.sparklesGeometry.getAttribute('position');
 
@@ -504,7 +544,11 @@ export default class Dolphin {
     let lineIndex = 0;
     const color1 = this.sparklesMaterial.uniforms.uColor1.value;
     const color2 = this.sparklesMaterial.uniforms.uColor2.value;
-    const connectionDistSq = this.connectionDistance * this.connectionDistance; // Use squared distance to avoid sqrt
+    const connectionDistSq = this.connectionDistance * this.connectionDistance;
+
+    // Dynamic line opacity based on velocity
+    const velocityIntensity = THREE.MathUtils.smoothstep(this.game.scroll.sharedVelocity, 0, 1.5);
+    this.linesMaterial.opacity = 0.12 + velocityIntensity * 0.76;
 
     // Simple spatial grid optimization
     const gridSize = this.connectionDistance * 2;

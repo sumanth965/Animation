@@ -2,6 +2,7 @@ uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform float uTime;
+uniform float uVelocityGlow;
 
 varying float vLife;
 varying float vSize;
@@ -18,7 +19,7 @@ void main() {
   float alpha = mix(glow, core, 0.5);
 
   float lifeFade = smoothstep(0.0, 0.15, vLife) * smoothstep(1.0, 0.4, vLife);
-  alpha *= lifeFade * 0.8;
+  alpha *= lifeFade * (0.35 + uVelocityGlow * 1.25);
 
   vec3 color;
   if(vLife < 0.5) {
@@ -29,7 +30,7 @@ void main() {
 
   float shimmer = sin(uTime * 8.0 + vLife * 20.0) * 0.1 + 0.9;
 
-  color *= 1.8 * shimmer;
+  color *= 1.8 * shimmer * (1.0 + uVelocityGlow * 0.8);
 
   gl_FragColor = vec4(color, alpha);
 }

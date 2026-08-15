@@ -108,6 +108,7 @@ uniform float uSpiralIntensity;
 uniform float uBuoyancy;
 uniform float uDrag;
 uniform vec3 uDolphinPosition;
+uniform vec3 uDolphinDirection;
 
 void main() {
   float time = uTime * 0.25;
@@ -124,7 +125,7 @@ void main() {
     particle.a = fract(particle.a) * 0.05;
   } else {
     float speedVariation = 0.7 + seed * 0.6;
-    vec3 current = vec3(0.0, 0.0, -uBackwardSpeed * speedVariation);
+    vec3 current = -uDolphinDirection * (uBackwardSpeed * speedVariation);
 
     vec3 curl = curlNoise(particle.xyz * 0.4, time) * uCurlStrength;
 

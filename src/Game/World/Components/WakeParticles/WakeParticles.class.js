@@ -159,6 +159,7 @@ export default class WakeParticles {
     uniforms.uBuoyancy = { value: this.config.buoyancy };
     uniforms.uDrag = { value: this.config.drag };
     uniforms.uDolphinPosition = { value: new THREE.Vector3(0, 0, 0) };
+    uniforms.uDolphinDirection = { value: new THREE.Vector3(0, 0, 1) };
 
     const error = this.gpuCompute.init();
     if (error !== null) {
@@ -235,6 +236,7 @@ export default class WakeParticles {
         uColor1: { value: this.config.color1 },
         uColor2: { value: this.config.color2 },
         uColor3: { value: this.config.color3 },
+        uVelocityGlow: { value: 0 },
       },
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -243,23 +245,55 @@ export default class WakeParticles {
   }
 
   update() {
+    const isSettled = this.game.scroll.isSettled;
+    
+    // Suspend GPGPU computation entirely if settled for more than 3 seconds
+    if (isSettled) {
+      this._settledTime = (this._settledTime || 0) + this.time.delta;
+      if (this._settledTime > 3.0) {
+        this.material.uniforms.uTime.value = this.time.elapsedTime;
+        this.material.uniforms.uVelocityGlow.value = THREE.MathUtils.damp(this.material.uniforms.uVelocityGlow.value, 0, 1.5, this.time.delta);
+        return;
+      }
+    } else {
+      this._settledTime = 0;
+    }
+
     const uniforms = this.positionVariable.material.uniforms;
 
     uniforms.uTime.value = this.time.elapsedTime;
     uniforms.uDeltaTime.value = this.time.delta;
 
-    // Optimize dolphin position updates - only update if dolphin moved significantly
     if (this.dolphin?.dolphin) {
       uniforms.uDolphinPosition.value.copy(this.dolphin.dolphin.position);
     }
 
-    this.updateSpawnPoints();
+    // Skip spawn point updates if settled
+    if (!isSettled) {
+      this.updateSpawnPoints();
+    }
+
+    // Scale simulation parameters by scroll velocity
+    const sharedVelocity = this.game.scroll.sharedVelocity || 0;
+    const velocityIntensity = THREE.MathUtils.smoothstep(sharedVelocity, 0, 1.5);
+    
+    uniforms.uBackwardSpeed.value = this.config.backwardSpeed * (0.3 + velocityIntensity * 1.7);
+    uniforms.uTurbulence.value = this.config.turbulence * (0.5 + velocityIntensity * 1.5);
+    uniforms.uSpread.value = this.config.spread * (0.4 + velocityIntensity * 1.6);
+    uniforms.uCurlStrength.value = this.config.curlStrength * (0.6 + velocityIntensity * 1.4);
+    
+    // Pass dolphin direction tangent
+    if (this.dolphin?.path?.tangent) {
+      const tangent = this.dolphin.path.tangent.clone().normalize();
+      uniforms.uDolphinDirection.value.copy(tangent);
+    }
 
     this.gpuCompute.compute();
 
     this.material.uniforms.uPositions.value =
       this.gpuCompute.getCurrentRenderTarget(this.positionVariable).texture;
     this.material.uniforms.uTime.value = this.time.elapsedTime;
+    this.material.uniforms.uVelocityGlow.value = velocityIntensity;
   }
 
   updateSpawnPoints() {

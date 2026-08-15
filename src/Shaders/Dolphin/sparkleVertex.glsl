@@ -1,6 +1,7 @@
 uniform float uTime;
 uniform float uSize;
 uniform float uPixelRatio;
+uniform float uVelocity;
 
 attribute float aRandom;
 attribute float aSize;
@@ -15,6 +16,8 @@ void main() {
     gl_Position = projectedPosition;
 
     float sizeVariation = aSize * (0.5 + 0.5 * sin(uTime * 2.0 + aRandom * 6.28));
+    sizeVariation *= (1.0 + uVelocity * 0.45);
+    
     gl_PointSize = uSize * sizeVariation * uPixelRatio;
     gl_PointSize *= (2.0 / -viewPosition.z);
     gl_PointSize = max(gl_PointSize, 2.0);

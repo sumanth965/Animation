@@ -95,6 +95,7 @@ export default class Game {
       }
     });
 
+    if (this.scroll && this.scroll.destroy) this.scroll.destroy();
     this.camera.controls.dispose();
     this.renderer.rendererInstance.dispose();
     this.postProcessing.dispose();

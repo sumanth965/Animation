@@ -88,6 +88,12 @@ export default class World {
     const focus = orbitingBuilding
       ? new THREE.Vector3(0, -6.5, dolphinPosition.z - 4).lerp(dolphinPosition, .5)
       : new THREE.Vector3(0, -2.2, -1);
-    camera.lookAt(focus);
+      
+    if (!this.currentFocus) {
+      this.currentFocus = focus.clone();
+    } else {
+      this.currentFocus.lerp(focus, 1 - Math.exp(-this.game.time.delta * 5.0));
+    }
+    camera.lookAt(this.currentFocus);
   }
 }

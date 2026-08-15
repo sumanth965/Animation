@@ -2,6 +2,7 @@ uniform sampler2D uPositions;
 uniform float uPixelRatio;
 uniform float uSize;
 uniform float uTime;
+uniform float uVelocityGlow;
 
 varying float vLife;
 varying float vSize;
@@ -18,6 +19,7 @@ void main() {
   float sizeVariation = 0.7 + 0.6 * fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
 
   float size = uSize * uPixelRatio * sizeFade * sizeVariation * (1.0 + lifeCurve * 0.3);
+  size *= (1.0 + uVelocityGlow * 0.4);
   size *= (0.7 / -mvPosition.z);
 
   vSize = size;

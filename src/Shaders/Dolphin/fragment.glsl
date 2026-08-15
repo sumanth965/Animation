@@ -1,5 +1,6 @@
 uniform float uTime;
 uniform vec3 uBaseColor;
+uniform float uVelocity;
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -15,7 +16,8 @@ void main() {
     float fresnel = dot(viewDirection, normal) + 1.0;
     fresnel = pow(fresnel, 2.5);
 
-    gl_FragColor = vec4(uBaseColor, fresnel);
+    vec3 color = uBaseColor * (1.0 + uVelocity * 1.5);
+    gl_FragColor = vec4(color, fresnel * (1.0 + uVelocity * 0.5));
 
     #include <colorspace_fragment>
 }
