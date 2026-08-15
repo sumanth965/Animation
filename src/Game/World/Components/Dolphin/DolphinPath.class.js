@@ -9,8 +9,8 @@ export default class DolphinPath {
     // including vertical dips and climbs.
     this.waypoints = [
       // 1. Large open starting area above the city (Z = 10 down to 0)
-      ['OVERVIEW', 'open-water', 4, 4, 10],
-      ['TRAVEL', 'overview-glide', 2, 2.5, 6],
+      ['OVERVIEW', 'open-water', 6.0, 3.8, 9.0],
+      ['TRAVEL', 'overview-glide', 3.5, 2.5, 5.5],
       ['TRAVEL', 'descent', 0, 0.5, 2],
       
       // 2. Weave into the city and approach buildings

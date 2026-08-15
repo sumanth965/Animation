@@ -67,23 +67,23 @@ export default class Dolphin {
     const isMobile = this.game.sizes.width < 768;
 
     if (isMobile) {
-      // Mobile safe region: scaled to fit bottom-right without text or screen clipping
-      this.fixedHeroPos = new THREE.Vector3(2.35, 2.65, 4.3);
+      // Mobile safe region: scaled to fit right side without text or screen clipping
+      this.fixedHeroPos = new THREE.Vector3(3.6, 2.65, 4.3);
       this.heroBounds = {
-        minX: 1.95, maxX: 2.75,
+        minX: 3.0, maxX: 4.2,
         minY: 2.35, maxY: 2.95,
         minZ: 4.0,  maxZ: 4.6,
       };
-      this.fixedHeroScale = 0.85;
+      this.fixedHeroScale = 1.15;
     } else {
-      // Desktop safe region: right 35-45% of viewport with comfortable margins
-      this.fixedHeroPos = new THREE.Vector3(4.35, 3.65, 3.3);
+      // Desktop safe region: right side clear of text with larger scale
+      this.fixedHeroPos = new THREE.Vector3(6.5, 3.5, 3.5);
       this.heroBounds = {
-        minX: 3.95, maxX: 4.75,
-        minY: 3.35, maxY: 3.95,
-        minZ: 3.0,  maxZ: 3.6,
+        minX: 5.8, maxX: 7.2,
+        minY: 3.0, maxY: 4.0,
+        minZ: 3.0,  maxZ: 4.0,
       };
-      this.fixedHeroScale = 1.08;
+      this.fixedHeroScale = 1.38;
     }
   }
 
@@ -364,11 +364,11 @@ export default class Dolphin {
       // Keep the hero alive without evaluating the cinematic spline or camera.
       const elapsed = this.time.elapsedTime;
       this.dolphin.position.set(
-        4.35 + Math.sin(elapsed * 0.6) * 0.08,
-        3.65 + Math.sin(elapsed * 0.9) * 0.055,
-        3.3 + Math.cos(elapsed * 0.5) * 0.06,
+        this.fixedHeroPos.x + Math.sin(elapsed * 0.6) * 0.08,
+        this.fixedHeroPos.y + Math.sin(elapsed * 0.9) * 0.055,
+        this.fixedHeroPos.z + Math.cos(elapsed * 0.5) * 0.06,
       );
-      this.dolphin.scale.setScalar(1.06);
+      this.dolphin.scale.setScalar(this.fixedHeroScale);
       this.targetQuaternion.setFromUnitVectors(this.forward, this.heroTangent);
       this.dolphin.quaternion.slerp(this.targetQuaternion, 1 - Math.exp(-this.time.delta * 3));
       this.dolphinVelocity = 0;
@@ -378,7 +378,7 @@ export default class Dolphin {
     
     // Give the hero a slight emphasis without allowing its silhouette to crop
     // at the edge of the opening viewport.
-    const scale = THREE.MathUtils.lerp(1.06, 1.0, THREE.MathUtils.smoothstep(scrollProgress, 0.0, 0.12));
+    const scale = THREE.MathUtils.lerp(this.fixedHeroScale, 1.0, THREE.MathUtils.smoothstep(scrollProgress, 0.0, 0.12));
     this.dolphin.scale.set(scale, scale, scale);
     
     const isDolphinSettled = this.game.scroll.isSettled && 
