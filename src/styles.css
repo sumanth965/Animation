@@ -39,6 +39,10 @@ body {
   overflow-x: hidden;
 }
 
+html, body {
+  min-height: 1000vh;
+}
+
 #three {
   position: fixed;
   inset: 0;
@@ -52,10 +56,12 @@ body {
   position: relative;
   z-index: 1;
   pointer-events: none;
+  min-height: 1000vh;
 }
 
 .scroll-space {
   height: 1000vh;
+  min-height: 1000vh;
 }
 
 .topbar {
