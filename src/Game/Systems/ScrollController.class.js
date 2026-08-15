@@ -26,6 +26,7 @@ export default class ScrollController {
     this.sharedVelocity = 0;
     this.isScrolling = false;
     this.isSettled = true;
+    this.userHasScrolled = false;
     this.state = 'IDLE_HERO';
     this.dirty = true;
     this.lastActivityTime = performance.now();
@@ -42,13 +43,17 @@ export default class ScrollController {
     this.lenis.on('scroll', (e) => {
       this.targetScroll = e.progress;
       this.scrollVelocity = e.velocity;
-      this.isScrolling = true;
-      this.isSettled = false;
+      if (e.progress > 0.001 || Math.abs(e.velocity) > 0.01) {
+        this.userHasScrolled = true;
+      }
+      this.isScrolling = this.userHasScrolled && (Math.abs(e.velocity) > 0.001 || Math.abs(e.progress - this.currentScroll) > 0.0005);
+      this.isSettled = !this.isScrolling;
       this.dirty = true;
       this.lastActivityTime = performance.now();
     });
 
-    // A second frame handles browsers that restore scroll after module evaluation.
+    // Handle browsers that restore scroll after module evaluation.
+    this.lenis.scrollTo(0, { immediate: true });
     requestAnimationFrame(() => { 
       this.lenis.scrollTo(0, { immediate: true }); 
     });

@@ -1,10 +1,17 @@
-/Users/admin/Documents/Projects/Animation 2/src/Shaders/Dolphin/sparkleFragment.glslimport * as THREE from 'three';
+import * as THREE from 'three';
 import vertexShader from '../../../../Shaders/Dolphin/vertex.glsl';
 import fragmentShader from '../../../../Shaders/Dolphin/fragment.glsl';
 import sparkleVertexShader from '../../../../Shaders/Dolphin/sparkleVertex.glsl';
 import sparkleFragmentShader from '../../../../Shaders/Dolphin/sparkleFragment.glsl';
 import Game from '../../../Game.class';
 import DolphinPath from './DolphinPath.class';
+
+export const DOLPHIN_STATE = {
+  INITIALIZING: 'INITIALIZING',
+  IDLE_HERO: 'IDLE_HERO',
+  TRANSITION_TO_PATH: 'TRANSITION_TO_PATH',
+  SCROLLING: 'SCROLLING',
+};
 
 export default class Dolphin {
   constructor() {
@@ -24,6 +31,19 @@ export default class Dolphin {
     // Frame optimization flags
     this._skeletonUpdatedThisFrame = false;
     this._matrixWorldUpdatedThisFrame = false;
+    this._frameCount = 0;
+
+    // State machine & controller ownership
+    this.state = DOLPHIN_STATE.INITIALIZING;
+    this.activeControllerName = 'HeroIdleController';
+    this.transitionProgress = 0;
+    this.transitionStartPos = new THREE.Vector3();
+    this.transitionStartQuat = new THREE.Quaternion();
+    this.transitionStartScale = 1.0;
+
+    this.targetQuaternion = new THREE.Quaternion();
+    this.forward = new THREE.Vector3(0, 0, 1);
+    this.heroTangent = new THREE.Vector3(-0.95, -0.1, -0.3).normalize();
 
     this.setMaterial();
     this.setModelInstance();
@@ -32,12 +52,58 @@ export default class Dolphin {
     this.journeyProgress = 0;
     this.focusProgress = null;
     this.updateTimeMs = 0;
-    this.targetQuaternion = new THREE.Quaternion();
-    this.forward = new THREE.Vector3(0, 0, 1);
-    this.heroTangent = new THREE.Vector3(-0.95, -0.1, -0.3).normalize();
+
+    this.calculateHeroLayout();
+    this.applyHeroPosition(true);
+
     this.setupSurfaceSampling();
     this.setPathDebug();
     this.setDebug();
+
+    this.game.sizes.on('resize', () => this.onResize());
+  }
+
+  calculateHeroLayout() {
+    const isMobile = this.game.sizes.width < 768;
+
+    if (isMobile) {
+      // Mobile safe region: scaled to fit bottom-right without text or screen clipping
+      this.fixedHeroPos = new THREE.Vector3(2.35, 2.65, 4.3);
+      this.heroBounds = {
+        minX: 1.95, maxX: 2.75,
+        minY: 2.35, maxY: 2.95,
+        minZ: 4.0,  maxZ: 4.6,
+      };
+      this.fixedHeroScale = 0.85;
+    } else {
+      // Desktop safe region: right 35-45% of viewport with comfortable margins
+      this.fixedHeroPos = new THREE.Vector3(4.35, 3.65, 3.3);
+      this.heroBounds = {
+        minX: 3.95, maxX: 4.75,
+        minY: 3.35, maxY: 3.95,
+        minZ: 3.0,  maxZ: 3.6,
+      };
+      this.fixedHeroScale = 1.08;
+    }
+  }
+
+  applyHeroPosition(isFrameZero = false) {
+    this.dolphin.position.copy(this.fixedHeroPos);
+    this.targetQuaternion.setFromUnitVectors(this.forward, this.heroTangent);
+    this.dolphin.quaternion.copy(this.targetQuaternion);
+    this.dolphin.scale.setScalar(this.fixedHeroScale);
+    this.dolphin.updateMatrixWorld(true);
+
+    if (isFrameZero && this.sparkles) {
+      this.updateSparklePositions();
+    }
+  }
+
+  onResize() {
+    this.calculateHeroLayout();
+    if (this.state === DOLPHIN_STATE.INITIALIZING || this.state === DOLPHIN_STATE.IDLE_HERO) {
+      this.applyHeroPosition();
+    }
   }
 
   // Kept behind ?mode=debug to verify corridor clearance against real city geometry.

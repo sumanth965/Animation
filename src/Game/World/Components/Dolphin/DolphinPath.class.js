@@ -40,44 +40,13 @@ export default class DolphinPath {
   getPoint(progress, elapsed) {
     const p = THREE.MathUtils.clamp(progress, 0, 1);
     
-    // 1. Calculate spline coordinates
-    const splinePos = new THREE.Vector3();
-    const splineTangent = new THREE.Vector3();
-    this.curve.getPointAt(p, splinePos);
-    this.curve.getTangentAt(p, splineTangent);
+    this.curve.getPointAt(p, this.position);
+    this.curve.getTangentAt(p, this.tangent);
     
     // Standard low-frequency swimming variation on the spline
     const n = Math.sin(elapsed * .45 + p * 15) * .16 + Math.sin(elapsed * .21 + p * 31) * .08;
-    splinePos.y += n;
-    splinePos.x += Math.sin(elapsed * .31 + p * 20) * .12;
-    
-    // 2. Define the home-page hero pose. Keep the complete dolphin inside the
-    // opening frame; the old far-right placement clipped its tail on load.
-    const heroPos = new THREE.Vector3(4.35, 3.65, 3.3);
-    // Look left-forward towards the main typography
-    const heroTangent = new THREE.Vector3(-0.95, -0.1, -0.3).normalize();
-    
-    // 3. Blend from hero position to spline trajectory between scroll progress 0.0 and 0.12
-    const t = THREE.MathUtils.smoothstep(p, 0.0, 0.12);
-    
-    this.position.lerpVectors(heroPos, splinePos, t);
-    this.tangent.lerpVectors(heroTangent, splineTangent, t).normalize();
-    
-    // 4. If we are on the homepage or early scroll, add local swim-in-place offsets
-    if (t < 1.0) {
-      const blendFactor = 1.0 - t;
-      const floatX = Math.sin(elapsed * 0.6) * 0.28 * blendFactor;
-      const floatY = Math.sin(elapsed * 0.9) * 0.18 * blendFactor;
-      const floatZ = Math.cos(elapsed * 0.5) * 0.22 * blendFactor;
-      
-      this.position.x += floatX;
-      this.position.y += floatY;
-      this.position.z += floatZ;
-      
-      // Sway the looking direction (yaw) slightly for organic movement
-      const swayAngle = Math.sin(elapsed * 1.2) * 0.1 * blendFactor;
-      this.tangent.applyAxisAngle(new THREE.Vector3(0, 1, 0), swayAngle);
-    }
+    this.position.y += n;
+    this.position.x += Math.sin(elapsed * .31 + p * 20) * .12;
     
     return { position: this.position, tangent: this.tangent };
   }

@@ -13,8 +13,9 @@ export default class Camera {
 
     this.idealRatio = 16 / 9;
     this.ratioOverflow = 0;
-    this.initialCameraPosition = new THREE.Vector3(4.0, 0.8, 3.4);
-    this.baseMaxDistance = 10;
+    this.initialCameraPosition = new THREE.Vector3(4.0, 6.5, 15.0);
+    this.initialTarget = new THREE.Vector3(2.5, 1.0, -10.0);
+    this.baseMaxDistance = 25;
 
     this.parallaxAmplitude = 0.2;
     this.parallaxEasingSpeed = 10;
@@ -285,11 +286,14 @@ export default class Camera {
       far
     );
     this.cameraInstance.position.copy(this.initialCameraPosition);
+    this.cameraInstance.lookAt(this.initialTarget);
+    this.cameraInstance.updateProjectionMatrix();
     this.cameraGroup.add(this.cameraInstance);
   }
 
   setOrbitControls() {
     this.controls = new OrbitControls(this.cameraInstance, this.canvas);
+    this.controls.target.copy(this.initialTarget);
     this.controls.enableDamping = true;
     this.controls.enablePan = false;
     this.controls.enableZoom = true;
@@ -298,19 +302,21 @@ export default class Camera {
     this.controls.maxPolarAngle = Math.PI / 1.5;
     this.controls.minPolarAngle = Math.PI / 4;
     this.controls.minDistance = 4;
+    this.controls.update();
   }
 
   updateCameraForAspectRatio() {
     const currentRatio = this.sizes.width / this.sizes.height;
     this.ratioOverflow = Math.max(1, this.idealRatio / currentRatio) - 1;
 
-    const baseDistance = this.initialCameraPosition.length();
-    const additionalDistance = baseDistance * this.ratioOverflow * 0.27;
-    const direction = this.initialCameraPosition.clone().normalize();
+    const baseDistance = this.initialCameraPosition.distanceTo(this.initialTarget);
+    const additionalDistance = baseDistance * this.ratioOverflow * 0.15;
+    const direction = this.initialCameraPosition.clone().sub(this.initialTarget).normalize();
     const newDistance = baseDistance + additionalDistance;
-    const adjustedPosition = direction.multiplyScalar(newDistance);
+    const adjustedPosition = this.initialTarget.clone().addScaledVector(direction, newDistance);
 
     this.cameraInstance.position.copy(adjustedPosition);
+    this.cameraInstance.lookAt(this.initialTarget);
     this.controls.maxDistance = Math.max(this.baseMaxDistance, newDistance);
   }
 
