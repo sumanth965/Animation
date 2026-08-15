@@ -443,6 +443,210 @@ button {
   }
 }
 
+/* Premium Glassmorphic Modern Footer */
+.site-footer {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 12;
+  background: rgba(4, 16, 29, 0.88);
+  border-top: 1px solid var(--panel-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(114, 239, 255, 0.2);
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+  font-family: Manrope, Arial, sans-serif;
+  color: #fff;
+}
+
+.site-footer.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.footer-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 4vw 22px;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+  gap: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(114, 239, 255, 0.12);
+}
+
+.footer-brand .brand {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.eyebrow-sub {
+  font: 500 10px 'DM Mono';
+  letter-spacing: 0.15em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 12px;
+  text-shadow: 0 0 8px var(--cyan-glow);
+}
+
+.footer-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0;
+  max-width: 320px;
+}
+
+.footer-heading {
+  font: 700 11px 'DM Mono';
+  letter-spacing: 0.18em;
+  color: #fff;
+  margin: 0 0 16px;
+  text-transform: uppercase;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+}
+
+.footer-links a:hover {
+  color: var(--cyan);
+  transform: translateX(4px);
+  text-shadow: 0 0 8px var(--cyan-glow);
+}
+
+.footer-links a svg {
+  transition: transform 0.25s ease;
+}
+
+.footer-links a:hover svg {
+  transform: scale(1.15);
+  color: var(--cyan);
+}
+
+.footer-cta-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.cta-subtitle {
+  font: 10px 'DM Mono';
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin: 0 0 14px;
+}
+
+.footer-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 22px;
+  background: linear-gradient(135deg, rgba(114, 239, 255, 0.18), rgba(114, 239, 255, 0.05));
+  border: 1px solid var(--cyan);
+  border-radius: 4px;
+  color: var(--cyan);
+  font: 700 11px 'DM Mono';
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  box-shadow: 0 0 15px rgba(114, 239, 255, 0.15);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  width: fit-content;
+}
+
+.footer-cta-btn:hover {
+  background: var(--cyan);
+  color: #02101b;
+  box-shadow: 0 0 25px var(--cyan);
+  transform: translateY(-2px);
+}
+
+.footer-cta-btn:hover svg {
+  transform: translateX(3px);
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  font: 11px 'DM Mono';
+  color: rgba(169, 195, 212, 0.7);
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 900px) {
+  .footer-top {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .footer-container {
+    padding: 24px 20px 18px;
+  }
+  .footer-top {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
+
+/* Glassmorphic Cyber Toast Notification */
+.hud-toast {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translate(-50%, -30px);
+  z-index: 100;
+  padding: 14px 28px;
+  background: rgba(4, 20, 36, 0.92);
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  color: var(--cyan);
+  font: 700 11px 'DM Mono';
+  letter-spacing: 0.14em;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 30px var(--cyan-glow), 0 10px 40px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.hud-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;

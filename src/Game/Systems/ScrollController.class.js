@@ -165,6 +165,18 @@ export default class ScrollController {
     document.body.dataset.chapter = phase;
     const label = this.label || (this.label = document.getElementById('current-chapter'));
     if (label) label.textContent = phase;
+
+    // 7. Toggle footer visibility at end of scroll track
+    const isAtEnd = this.progress >= 0.88;
+    const footerEl = this.footerEl || (this.footerEl = document.getElementById('site-footer'));
+    if (footerEl) {
+      footerEl.classList.toggle('visible', isAtEnd);
+    }
+    const hudEl = this.hudEl || (this.hudEl = document.querySelector('.hud'));
+    if (hudEl) {
+      hudEl.style.opacity = isAtEnd ? '0.2' : '1';
+      hudEl.style.transition = 'opacity 0.3s ease';
+    }
   }
 
   destroy() {

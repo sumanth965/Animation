@@ -33,3 +33,43 @@ enterButton.addEventListener('click', () => { loadingScreen.classList.add('hidde
 document.querySelectorAll('[data-rail]').forEach((dot, index) => dot.addEventListener('click', () => {
   document.querySelectorAll('[data-chapter]')[index]?.scrollIntoView({ behavior: 'smooth' });
 }));
+
+// Footer navigation & CTA handlers
+document.getElementById('nav-overview')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+document.getElementById('nav-exhibits')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  window.scrollTo({ top: maxScroll * 0.35, behavior: 'smooth' });
+});
+
+document.getElementById('nav-events')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  window.scrollTo({ top: maxScroll * 0.65, behavior: 'smooth' });
+});
+
+document.getElementById('nav-register')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  window.scrollTo({ top: maxScroll, behavior: 'smooth' });
+});
+
+document.getElementById('footer-cta')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const toast = document.createElement('div');
+  toast.className = 'hud-toast';
+  toast.textContent = 'REGISTRATION IS ONLINE FOR SEMAPHORE ’26! WELCOME ABOARD.';
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 400);
+    }, 3500);
+  }, 50);
+});
+
