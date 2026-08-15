@@ -18,73 +18,38 @@ export default class World {
     this.scene.background = null;
 
     this.componentMetrics = {};
+    this.cityInitializationTime = 0;
+    this.dolphinInitializationTime = 0;
+    this.particleInitializationTime = 0;
+    this.GPGPUInitializationTime = 0;
+    this.postProcessingInitializationTime = 0;
 
-    const initComponent = (name, fn) => {
-      const t0 = performance.now();
-      try {
-        fn();
-        const duration = performance.now() - t0;
-        this.componentMetrics[name] = { status: 'SUCCESS', durationMs: duration.toFixed(2) };
-        console.log(`[Diagnostic] [World Component] '${name}' initialized in ${duration.toFixed(2)}ms`);
-      } catch (err) {
-        const duration = performance.now() - t0;
-        this.componentMetrics[name] = { status: 'FAILED', durationMs: duration.toFixed(2), error: err?.message || String(err) };
-        console.error(`[Diagnostic] [World Component] Stage Failure: '${name}' failed after ${duration.toFixed(2)}ms:`, err);
-      }
-    };
-
-    initComponent('Lighting', () => {
+    // 1. Synchronously initialize hero-visible scene elements for immediate first frame
+    const tLighting = performance.now();
+    try {
       this.lighting = new Lighting({ helperEnabled: false });
-    });
+    } catch (e) { console.warn('[Diagnostic] Lighting setup warning:', e); }
 
-    initComponent('Seabed', () => {
-      this.seabed = new Seabed();
-    });
-
-    initComponent('Wormhole', () => {
-      this.wormhole = new Wormhole();
-    });
-
-    initComponent('Dolphin', () => {
+    const tDolphin = performance.now();
+    try {
       this.dolphin = new Dolphin();
-    });
+      this.dolphinInitializationTime = performance.now() - tDolphin;
+    } catch (e) { console.warn('[Diagnostic] Dolphin setup warning:', e); }
 
-    initComponent('CityManager', () => {
+    const tSeabed = performance.now();
+    try {
+      this.seabed = new Seabed();
+      this.particleInitializationTime += (performance.now() - tSeabed);
+    } catch (e) { console.warn('[Diagnostic] Seabed setup warning:', e); }
+
+    const tCity = performance.now();
+    try {
       this.city = new CityManager();
-    });
+      this.cityInitializationTime += (performance.now() - tCity);
+    } catch (e) { console.warn('[Diagnostic] CityManager core setup warning:', e); }
 
-    initComponent('EventManager', () => {
-      if (this.dolphin && this.city) {
-        this.eventManager = new EventManager(this.dolphin, this.city);
-      } else {
-        console.warn('[Diagnostic] [World Component] EventManager skipped because Dolphin or CityManager failed.');
-      }
-    });
-
-    // Progressive background initialization of non-critical effects after the first hero frame
-    setTimeout(() => {
-      initComponent('FlowField', () => {
-        if (!this.flowField) {
-          this.flowField = new FlowField();
-        }
-      });
-
-      initComponent('WakeParticles', () => {
-        if (this.dolphin && !this.wakeParticles) {
-          this.wakeParticles = new WakeParticles(this.dolphin);
-        } else if (!this.dolphin) {
-          console.warn('[Diagnostic] [World Component] WakeParticles skipped because Dolphin model failed.');
-        }
-      });
-
-      initComponent('FishSchool', () => {
-        if (!this.fishSchool) {
-          this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
-        }
-      });
-
-      console.log('[Diagnostic] [World Scene] All progressive background components initialized:', this.componentMetrics);
-    }, 150);
+    // 2. Schedule progressive background initialization batches across animation frames
+    this.scheduleProgressiveBatches();
     
     // Configurable camera settings for smooth dynamic follow
     this.cameraConfig = {
@@ -99,6 +64,96 @@ export default class World {
     
     this.desiredCameraPos = new THREE.Vector3();
     this.desiredFocusPos = new THREE.Vector3();
+  }
+
+  scheduleProgressiveBatches() {
+    const queue = [
+      () => {
+        const t0 = performance.now();
+        if (this.city) this.city.createSecondaryBuildings();
+        this.cityInitializationTime += (performance.now() - t0);
+      },
+      () => {
+        const t0 = performance.now();
+        if (this.city) this.city.createSkylineAndClutter();
+        this.cityInitializationTime += (performance.now() - t0);
+      },
+      () => {
+        if (this.dolphin && this.city && !this.eventManager) {
+          try {
+            this.eventManager = new EventManager(this.dolphin, this.city);
+          } catch (e) { console.warn('[Diagnostic] EventManager progressive warning:', e); }
+        }
+      },
+      () => {
+        if (!this.wormhole) {
+          try {
+            this.wormhole = new Wormhole();
+          } catch (e) { console.warn('[Diagnostic] Wormhole progressive warning:', e); }
+        }
+      },
+      () => {
+        const t0 = performance.now();
+        if (!this.flowField) {
+          try {
+            this.flowField = new FlowField();
+          } catch (e) { console.warn('[Diagnostic] FlowField progressive warning:', e); }
+        }
+        this.particleInitializationTime += (performance.now() - t0);
+      },
+      () => {
+        const t0 = performance.now();
+        if (!this.fishSchool) {
+          try {
+            this.fishSchool = new FishSchool({ buildingPosition: new THREE.Vector3(0, -6.5, -26), fishCount: 20 });
+          } catch (e) { console.warn('[Diagnostic] FishSchool progressive warning:', e); }
+        }
+        this.particleInitializationTime += (performance.now() - t0);
+      },
+      () => {
+        const t0 = performance.now();
+        if (this.dolphin && !this.wakeParticles) {
+          try {
+            this.wakeParticles = new WakeParticles(this.dolphin);
+          } catch (e) { console.warn('[Diagnostic] WakeParticles progressive warning:', e); }
+        }
+        this.GPGPUInitializationTime = (performance.now() - t0);
+      },
+      () => {
+        const t0 = performance.now();
+        if (this.game && typeof this.game.initPostProcessing === 'function') {
+          this.postProcessingInitializationTime = this.game.initPostProcessing();
+        }
+      },
+      () => {
+        const totalStartupTime = performance.now() - (this.game.gameStartTime || performance.now());
+        console.log('[Performance Diagnostics] World initialization completed:', {
+          timeToFirstRender: `${this.game.timeToFirstRender ? this.game.timeToFirstRender.toFixed(2) : '0.00'}ms`,
+          cityInitializationTime: `${this.cityInitializationTime.toFixed(2)}ms`,
+          dolphinInitializationTime: `${this.dolphinInitializationTime.toFixed(2)}ms`,
+          particleInitializationTime: `${this.particleInitializationTime.toFixed(2)}ms`,
+          GPGPUInitializationTime: `${this.GPGPUInitializationTime.toFixed(2)}ms`,
+          postProcessingInitializationTime: `${this.postProcessingInitializationTime.toFixed(2)}ms`,
+          totalStartupTime: `${totalStartupTime.toFixed(2)}ms`,
+          longestAnimationFrameDuration: `${this.game.longestAnimationFrameDuration ? this.game.longestAnimationFrameDuration.toFixed(2) : '0.00'}ms`
+        });
+      }
+    ];
+
+    let index = 0;
+    const processNext = () => {
+      if (index < queue.length) {
+        try {
+          queue[index]();
+        } catch (e) {
+          console.warn(`[Diagnostic] Progressive batch ${index} error:`, e);
+        }
+        index++;
+        setTimeout(processNext, 16);
+      }
+    };
+
+    setTimeout(processNext, 32);
   }
 
   update() {

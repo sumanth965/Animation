@@ -35,6 +35,8 @@ export default class ScrollController {
     this._lastTargetScroll = 0;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
+    this._lastCameraPos = new THREE.Vector3();
+
     // Compatibility fields
     this.progress = 0;
     this.target = 0;

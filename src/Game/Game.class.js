@@ -80,8 +80,8 @@ export default class Game {
       this.world = new World();
     });
 
-    runStage(10, 'PostProcessing', () => {
-      this.postProcessing = new PostProcessing();
+    runStage(10, 'PostProcessing (Deferred)', () => {
+      this.postProcessing = null;
     }, false);
 
     runStage(11, 'Animation Loop', () => {
@@ -93,9 +93,23 @@ export default class Game {
       });
     });
 
+    this.gameStartTime = gameStartTime;
     const totalInitDuration = performance.now() - gameStartTime;
-    console.log(`[Diagnostic] [Game Startup Complete] Total initialization duration: ${totalInitDuration.toFixed(2)}ms`);
+    console.log(`[Diagnostic] [Game Startup Synchronous Phase Complete] First frame ready in ${totalInitDuration.toFixed(2)}ms`);
     console.log('[Diagnostic] [Game Stage Metrics Summary]:', this.stageMetrics);
+  }
+
+  initPostProcessing() {
+    const t0 = performance.now();
+    try {
+      this.postProcessing = new PostProcessing();
+      const duration = performance.now() - t0;
+      console.log(`[Diagnostic] [PostProcessing] Initialized after first frame in ${duration.toFixed(2)}ms`);
+      return duration;
+    } catch (err) {
+      console.warn('[Diagnostic] [PostProcessing] Initialization warning:', err);
+      return 0;
+    }
   }
 
   static getInstance() {
@@ -112,6 +126,8 @@ export default class Game {
   }
 
   update() {
+    const frameStart = performance.now();
+
     if (this.mouse) this.mouse.update(this.time.delta);
     if (this.scroll) this.scroll.update(this.time.delta);
     if (this.camera && this.mouse) this.camera.update(this.mouse, this.time.delta);
@@ -120,6 +136,15 @@ export default class Game {
       this.postProcessing.update(this.time.elapsed, this.time.delta);
     }
     if (this.renderer) this.renderer.update();
+
+    if (!this.hasFirstRendered && this.gameStartTime) {
+      this.hasFirstRendered = true;
+      this.timeToFirstRender = performance.now() - this.gameStartTime;
+      console.log(`[Performance Diagnostics] timeToFirstRender: ${this.timeToFirstRender.toFixed(2)}ms`);
+    }
+
+    const frameDuration = performance.now() - frameStart;
+    this.longestAnimationFrameDuration = Math.max(this.longestAnimationFrameDuration || 0, frameDuration);
   }
 
   destroy() {

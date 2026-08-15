@@ -72,14 +72,18 @@ export default class CityManager {
     this.windowColors = [];
     this.roadGroup = new THREE.Group();
     this.infrastructureGroup = new THREE.Group();
-    
+
+    // Shared geometries to avoid CPU re-computation of BoxGeometry & EdgesGeometry
+    this.unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+    this.unitBoxEdgesGeo = new THREE.EdgesGeometry(this.unitBoxGeo);
+
     // Refined sandstone/beige materials (matching reference image sandstone and gold look)
     this.baseMaterial = new THREE.MeshStandardMaterial({
       color: 0xede6db, // cream sandstone base
       roughness: 0.75,
       metalness: 0.15
     });
-    
+
     this.glassMaterial = new THREE.MeshStandardMaterial({
       color: 0x5abecf, // turquoise/teal glass
       emissive: 0x0c333a,
@@ -89,17 +93,17 @@ export default class CityManager {
       transparent: true,
       opacity: 0.55
     });
-    
+
     this.roofMaterial = new THREE.MeshStandardMaterial({
       color: 0x93b7be, // light stone/blue-grey slate
       roughness: 0.4,
       metalness: 0.3
     });
-    
+
     this.applyCaustics(this.baseMaterial);
     this.applyCaustics(this.glassMaterial);
     this.applyCaustics(this.roofMaterial);
-    
+
     this.windowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff, // warm white/golden vertex window light (mapped via colors)
       vertexColors: true,
@@ -107,7 +111,7 @@ export default class CityManager {
       opacity: 0.96,
       blending: THREE.AdditiveBlending
     });
-    
+
     this.edgeMaterial = new THREE.LineBasicMaterial({
       color: 0xeedcbd, // soft warm beige lines
       transparent: true,
@@ -115,7 +119,7 @@ export default class CityManager {
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
-    
+
     this.mullionMaterial = new THREE.MeshBasicMaterial({
       color: 0xd4af37, // golden/bronze structural accents
       transparent: true,
@@ -123,24 +127,33 @@ export default class CityManager {
       blending: THREE.AdditiveBlending
     });
 
-    // Build the planned concentric metropolis components
+    // Synchronously build hero-visible core (landmark, dome, road, and primary hero buildings)
     this.createCentralLandmark();
     this.createEnclosingDome();
     this.createRoad();
-    
-    EVENT_BUILDINGS.forEach(spec => this.createBuilding(...spec, true));
-    SUPPORT_BUILDINGS.forEach((spec,index) => this.createBuilding(`support-${index}`, ...spec, 'residential', false));
-    OVERVIEW_SKYLINE.forEach((spec,index) => this.createBuilding(`skyline-${index}`, ...spec, 'tower', false, true));
-    
-    this.createWindows();
-    this.createInfrastructure();
-    this.createGroundedEnvironment();
-    
+
+    // Create immediate hero buildings synchronously (first 2 event buildings)
+    EVENT_BUILDINGS.slice(0, 2).forEach(spec => this.createBuilding(...spec, true));
+
     this.city.add(this.roadGroup);
     this.city.add(this.infrastructureGroup);
     this.bindEvents();
-    
+
     if (this.game.isDebugEnabled) this.createDebugBounds();
+  }
+
+  createSecondaryBuildings() {
+    EVENT_BUILDINGS.slice(2).forEach(spec => this.createBuilding(...spec, true));
+    SUPPORT_BUILDINGS.forEach((spec, index) => this.createBuilding(`support-${index}`, ...spec, 'residential', false));
+    this.bindEvents();
+  }
+
+  createSkylineAndClutter() {
+    OVERVIEW_SKYLINE.forEach((spec, index) => this.createBuilding(`skyline-${index}`, ...spec, 'tower', false, true));
+    this.createWindows();
+    this.createInfrastructure();
+    this.createGroundedEnvironment();
+    this.bindEvents();
   }
 
   createCentralLandmark() {
@@ -501,23 +514,35 @@ export default class CityManager {
   buildTieredMass(group,width,depth,height,type) {
     let y=0, topWidth=width;
     TIER_PROFILES[type].forEach(tier=>{
-      const h=height*tier.h,w=width*tier.s,d=depth*tier.s, mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),this.baseMaterial.clone());
+      const h=height*tier.h,w=width*tier.s,d=depth*tier.s, mesh=new THREE.Mesh(this.unitBoxGeo, this.baseMaterial);
+      mesh.scale.set(w, h, d);
       mesh.position.y=y+h/2;group.add(mesh);
-      const edges=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry),this.edgeMaterial);edges.position.copy(mesh.position);group.add(edges);
-      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([cx,cz])=>{const m=new THREE.Mesh(new THREE.BoxGeometry(.07,h*.97,.07),this.mullionMaterial);m.position.set(cx*w/2,mesh.position.y,cz*d/2);group.add(m);});
+      const edges=new THREE.LineSegments(this.unitBoxEdgesGeo, this.edgeMaterial);
+      edges.scale.set(w, h, d);
+      edges.position.copy(mesh.position);group.add(edges);
+      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([cx,cz])=>{
+        const m=new THREE.Mesh(this.unitBoxGeo, this.mullionMaterial);
+        m.scale.set(.07, h*.97, .07);
+        m.position.set(cx*w/2,mesh.position.y,cz*d/2);group.add(m);
+      });
       this.collectTierWindows(group.userData.x,group.userData.z,w,d,y,y+h,group.userData.important); y+=h;topWidth=w;
     });
     return {topY:y,topWidth};
   }
 
   createBuilding(id, x, z, width, depth, height, type, important, background = false) {
+    if (this.buildings.has(id)) return;
     const group = new THREE.Group(); group.name = id; group.position.set(x, -12, z); group.rotation.y=((x*13+z*7)%5)*.018; group.userData = { id, height, x, z, background, reveal: THREE.MathUtils.clamp((-z-4)/58, .05, .96), important };
     let topY=height, topWidth=width;
     if (TIER_PROFILES[type]) {
       const result=this.buildTieredMass(group,width,depth,height,type); topY=result.topY;topWidth=result.topWidth;
     } else {
-      const base = new THREE.Mesh(new THREE.BoxGeometry(width,height,depth), this.baseMaterial.clone()); base.position.y=height/2; group.add(base);
-      const edges=new THREE.LineSegments(new THREE.EdgesGeometry(base.geometry),this.edgeMaterial);edges.position.copy(base.position);group.add(edges);
+      const base = new THREE.Mesh(this.unitBoxGeo, this.baseMaterial);
+      base.scale.set(width, height, depth);
+      base.position.y=height/2; group.add(base);
+      const edges=new THREE.LineSegments(this.unitBoxEdgesGeo, this.edgeMaterial);
+      edges.scale.set(width, height, depth);
+      edges.position.copy(base.position);group.add(edges);
       this.collectTierWindows(x,z,width,depth,0,height,important);
     }
     const roof = type === 'auditorium'
@@ -526,8 +551,25 @@ export default class CityManager {
     roof.position.y=topY+(type==='auditorium'?0:1); group.add(roof);
     this.addArchitecturalIdentity(group, type, width, depth, height, topY, important);
     if (type === 'tower') { const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3,6),this.mullionMaterial); antenna.position.y=topY+3; group.add(antenna); const beacon=new THREE.Mesh(new THREE.SphereGeometry(.14,8,8),this.mullionMaterial);beacon.position.y=topY+4.4;group.add(beacon);group.userData.beacon=beacon; }
-    if (type === 'college' || type === 'gallery') { for (let side=-1;side<=1;side+=2) { const wing=new THREE.Mesh(new THREE.BoxGeometry(width*.35,height*.48,depth*1.35),this.baseMaterial.clone()); wing.position.set(side*width*.58,height*.24,0); group.add(wing); const edges=new THREE.LineSegments(new THREE.EdgesGeometry(wing.geometry),this.edgeMaterial);edges.position.copy(wing.position);group.add(edges); } }
-    if (important) { const inward=x<0?1:-1; const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.2,.18,width*.7),this.mullionMaterial);canopy.position.set(inward*(width/2+1),2.4,0);group.add(canopy); const sign=new THREE.Mesh(new THREE.BoxGeometry(.15,1.4,2.4),this.mullionMaterial);sign.position.set(inward*(width/2+.2),2.2,0);group.add(sign); }
+    if (type === 'college' || type === 'gallery') {
+      for (let side=-1;side<=1;side+=2) {
+        const wing=new THREE.Mesh(this.unitBoxGeo, this.baseMaterial);
+        wing.scale.set(width*.35, height*.48, depth*1.35);
+        wing.position.set(side*width*.58,height*.24,0); group.add(wing);
+        const edges=new THREE.LineSegments(this.unitBoxEdgesGeo, this.edgeMaterial);
+        edges.scale.copy(wing.scale);
+        edges.position.copy(wing.position);group.add(edges);
+      }
+    }
+    if (important) {
+      const inward=x<0?1:-1;
+      const canopy=new THREE.Mesh(this.unitBoxGeo, this.mullionMaterial);
+      canopy.scale.set(2.2, .18, width*.7);
+      canopy.position.set(inward*(width/2+1),2.4,0);group.add(canopy);
+      const sign=new THREE.Mesh(this.unitBoxGeo, this.mullionMaterial);
+      sign.scale.set(.15, 1.4, 2.4);
+      sign.position.set(inward*(width/2+.2),2.2,0);group.add(sign);
+    }
     
     // Buildings are 100% static in world space and fully visible from the start
     group.scale.y=1;
@@ -552,16 +594,32 @@ export default class CityManager {
       const domeRing=new THREE.Mesh(new THREE.TorusGeometry(width*.57,.075,8,32),accent);domeRing.rotation.x=Math.PI/2;domeRing.position.y=height+.12;group.add(domeRing);
       const spire=new THREE.Mesh(new THREE.ConeGeometry(.22,1.8,8),this.roofMaterial);spire.position.y=height+2;group.add(spire);
     } else if (type==='college' || type==='gallery') {
-      const facade=new THREE.Mesh(new THREE.BoxGeometry(width*.58,height*.55,.1),this.glassMaterial);facade.position.set(0,height*.5,depth*.51);group.add(facade);
-      for(let y=height*.25;y<height*.9;y+=height*.22){const band=new THREE.Mesh(new THREE.BoxGeometry(width*.64,.045,.08),accent);band.position.set(0,y,depth*.57);group.add(band);}
+      const facade=new THREE.Mesh(this.unitBoxGeo, this.glassMaterial);
+      facade.scale.set(width*.58, height*.55, .1);
+      facade.position.set(0,height*.5,depth*.51);group.add(facade);
+      for(let y=height*.25;y<height*.9;y+=height*.22){
+        const band=new THREE.Mesh(this.unitBoxGeo, accent);
+        band.scale.set(width*.64, .045, .08);
+        band.position.set(0,y,depth*.57);group.add(band);
+      }
     } else if (type==='residential') {
-      const balcony=new THREE.Mesh(new THREE.BoxGeometry(width*.82,.09,depth*1.06),this.glassMaterial);balcony.position.y=height*.6;group.add(balcony);
+      const balcony=new THREE.Mesh(this.unitBoxGeo, this.glassMaterial);
+      balcony.scale.set(width*.82, .09, depth*1.06);
+      balcony.position.y=height*.6;group.add(balcony);
     }
-    if (important) { const blade=new THREE.Mesh(new THREE.BoxGeometry(.09,Math.min(height*.7,6),.12),this.mullionMaterial);blade.position.set(0,Math.min(height*.4,3.2),depth*.55);group.add(blade); }
+    if (important) {
+      const blade=new THREE.Mesh(this.unitBoxGeo, this.mullionMaterial);
+      blade.scale.set(.09, Math.min(height*.7,6), .12);
+      blade.position.set(0,Math.min(height*.4,3.2),depth*.55);group.add(blade);
+    }
   }
 
   createWindows() {
-    const geometry=new THREE.BoxGeometry(1,1,1); this.windows=new THREE.InstancedMesh(geometry,this.windowMaterial,this.windowMatrices.length);
+    if (this.windows) {
+      this.city.remove(this.windows);
+      this.windows.geometry.dispose();
+    }
+    this.windows=new THREE.InstancedMesh(this.unitBoxGeo, this.windowMaterial, this.windowMatrices.length);
     this.windowMatrices.forEach((matrix,index)=>{this.windows.setMatrixAt(index,matrix);this.windowColors[index] && this.windows.setColorAt(index,this.windowColors[index]);}); this.windows.instanceMatrix.needsUpdate=true; if(this.windows.instanceColor)this.windows.instanceColor.needsUpdate=true;this.windows.frustumCulled=false; this.city.add(this.windows);
   }
 

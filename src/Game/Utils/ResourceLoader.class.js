@@ -150,10 +150,15 @@ export default class ResourceLoader extends EventEmitter {
       const { type, path, id, fallbackPath } = source;
       const assetStartTime = performance.now();
 
+      // Ensure single-asset loaders receive a string path, not an array
+      const isMultiPath = Array.isArray(path);
+      const primaryPath = type === 'cubeMap' ? path : (isMultiPath ? path[0] : path);
+      const activeFallbackPath = fallbackPath || (isMultiPath && path.length > 1 ? path[1] : null);
+
       const onLoad = (file) => {
         const duration = performance.now() - assetStartTime;
         this.items[id] = file;
-        this.assetMetrics[id] = { status: 'SUCCESS', durationMs: duration.toFixed(2), type, path };
+        this.assetMetrics[id] = { status: 'SUCCESS', durationMs: duration.toFixed(2), type, path: primaryPath };
         console.log(`[Diagnostic] [ResourceLoader] Asset '${id}' (${type}) loaded successfully in ${duration.toFixed(2)}ms`);
 
         if (id === 'heroBackground') {
@@ -164,25 +169,25 @@ export default class ResourceLoader extends EventEmitter {
 
       const onError = (err) => {
         const duration = performance.now() - assetStartTime;
-        console.warn(`[Diagnostic] [ResourceLoader] Failed loading primary asset '${id}' from '${path}' after ${duration.toFixed(2)}ms. Error:`, err);
-        this.assetMetrics[id] = { status: 'FAILED', durationMs: duration.toFixed(2), type, path, error: err?.message || String(err) };
+        console.warn(`[Diagnostic] [ResourceLoader] Failed loading primary asset '${id}' from '${primaryPath}' after ${duration.toFixed(2)}ms. Error:`, err);
+        this.assetMetrics[id] = { status: 'FAILED', durationMs: duration.toFixed(2), type, path: primaryPath, error: err?.message || String(err) };
 
         if (id === 'heroBackground') {
-          this.debugStatus.textureError = `Failed: ${path}`;
+          this.debugStatus.textureError = `Failed: ${primaryPath}`;
         }
-        if (fallbackPath) {
-          console.log(`[Diagnostic] [ResourceLoader] Attempting fallback asset '${id}' from '${fallbackPath}'`);
+        if (activeFallbackPath) {
+          console.log(`[Diagnostic] [ResourceLoader] Attempting fallback asset '${id}' from '${activeFallbackPath}'`);
           if (id === 'heroBackground') {
-            this.debugStatus.backgroundUrl = fallbackPath;
+            this.debugStatus.backgroundUrl = activeFallbackPath;
           }
           this.loaders.textureLoader.load(
-            fallbackPath,
+            activeFallbackPath,
             (fallbackFile) => {
               this.items[id] = fallbackFile;
               this.assetMetrics[id].status = 'FALLBACK_SUCCESS';
               if (id === 'heroBackground') {
                 this.debugStatus.textureLoaded = true;
-                this.debugStatus.textureError = `Fallback active (${fallbackPath})`;
+                this.debugStatus.textureError = `Fallback active (${activeFallbackPath})`;
               }
             },
             undefined,
@@ -199,26 +204,26 @@ export default class ResourceLoader extends EventEmitter {
       };
 
       if (id === 'heroBackground') {
-        this.debugStatus.backgroundUrl = path;
+        this.debugStatus.backgroundUrl = primaryPath;
       }
 
-      console.log(`[Diagnostic] [ResourceLoader] Requesting asset '${id}' (${type}) path:`, path);
+      console.log(`[Diagnostic] [ResourceLoader] Requesting asset '${id}' (${type}) path:`, primaryPath);
 
       switch (type) {
         case 'gltfModelCompressed':
-          this.loaders.gltfCompressLoader.load(path, onLoad, undefined, onError);
+          this.loaders.gltfCompressLoader.load(primaryPath, onLoad, undefined, onError);
           break;
         case 'gltfModel':
-          this.loaders.gltfLoader.load(path, onLoad, undefined, onError);
+          this.loaders.gltfLoader.load(primaryPath, onLoad, undefined, onError);
           break;
         case 'texture':
-          this.loaders.textureLoader.load(path, onLoad, undefined, onError);
+          this.loaders.textureLoader.load(primaryPath, onLoad, undefined, onError);
           break;
         case 'HDRITexture':
-          this.loaders.hdriLoader.load(path, onLoad, undefined, onError);
+          this.loaders.hdriLoader.load(primaryPath, onLoad, undefined, onError);
           break;
         case 'cubeMap':
-          this.loaders.cubeTextureLoader.load(path, onLoad, undefined, onError);
+          this.loaders.cubeTextureLoader.load(primaryPath, onLoad, undefined, onError);
           break;
         default:
           console.warn(`[Diagnostic] [ResourceLoader] Unknown asset type: ${type}`);

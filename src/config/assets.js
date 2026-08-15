@@ -3,7 +3,8 @@ const ASSETS = [
     id: 'heroBackground',
     type: 'texture',
     priority: 'CRITICAL',
-    path: ['/assets/textures/hero-bg.jpg', '/assets/textures/hero-bg-fallback.jpg'],
+    path: '/assets/textures/hero-bg.jpg',
+    fallbackPath: '/assets/textures/hero-bg-fallback.jpg',
   },
   {
     id: 'environmentMapTexture',
@@ -22,7 +23,7 @@ const ASSETS = [
     id: 'dolphinAnimatedModel',
     type: 'gltfModelCompressed',
     priority: 'CRITICAL',
-    path: ['/assets/models/dolphin_anim.glb'],
+    path: '/assets/models/dolphin_anim.glb',
   },
 ];
 
