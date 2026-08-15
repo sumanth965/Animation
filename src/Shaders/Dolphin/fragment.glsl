@@ -16,8 +16,11 @@ void main() {
     float fresnel = dot(viewDirection, normal) + 1.0;
     fresnel = pow(fresnel, 2.5);
 
-    vec3 color = uBaseColor * (1.0 + uVelocity * 1.5);
-    gl_FragColor = vec4(color, fresnel * (1.0 + uVelocity * 0.5));
+    // Retain a deep body while making the cyan silhouette legible in the hero.
+    vec3 deepBlue = vec3(0.008, 0.045, 0.10);
+    vec3 glowColor = uBaseColor * (1.35 + uVelocity * 1.5);
+    vec3 color = mix(deepBlue, glowColor, 0.18 + fresnel * 0.82);
+    gl_FragColor = vec4(color, 0.28 + fresnel * 0.72);
 
     #include <colorspace_fragment>
 }

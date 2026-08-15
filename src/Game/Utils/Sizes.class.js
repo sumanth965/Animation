@@ -6,12 +6,13 @@ export default class Sizes extends EventEmitter {
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.pixelRatio = Math.min(window.devicePixelRatio, 2);
+    // Keep the post-processed hero smooth on high-DPI screens.
+    this.pixelRatio = Math.min(window.devicePixelRatio, 1.5);
 
     window.addEventListener('resize', () => {
       this.width = window.innerWidth;
       this.height = window.innerHeight;
-      this.pixelRatio = Math.min(window.devicePixelRatio, 2);
+      this.pixelRatio = Math.min(window.devicePixelRatio, 1.5);
 
       this.trigger('resize');
     });

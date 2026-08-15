@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import Game from '../../../Game.class';
 import Fish from './Fish.class';
+import Jellyfish from './Jellyfish.class';
 
 export default class FishSchool {
   constructor({ buildingPosition = new THREE.Vector3(0, 0, -26), fishCount = 15 } = {}) {
@@ -11,8 +12,10 @@ export default class FishSchool {
     this.buildingPosition = buildingPosition.clone();
     this.fishCount = fishCount;
     this.fish = [];
+    this.jellyfish = [];
 
     this.spawnFish();
+    this.spawnJellyfish();
   }
 
   spawnFish() {
@@ -40,18 +43,33 @@ export default class FishSchool {
     }
   }
 
+  spawnJellyfish() {
+    const positions = [
+      new THREE.Vector3(-10, -5, -15),
+      new THREE.Vector3(8, -8, -30),
+      new THREE.Vector3(-9, -2, -50),
+      new THREE.Vector3(9, -7, -68),
+    ];
+    positions.forEach((pos, i) => {
+      const jelly = new Jellyfish({
+        position: pos,
+        speed: 0.3 + Math.random() * 0.15,
+        size: 0.65 + Math.random() * 0.45
+      });
+      this.jellyfish.push(jelly);
+    });
+  }
+
   update() {
-    const progress = this.game.scroll.progress;
-    // Fish visible during opening DIVE phase (0 to ~0.3)
-    const fishVisibility = THREE.MathUtils.smoothstep(progress, 0.25, 0.35);
-    
     this.fish.forEach((fish) => {
       fish.update();
-      fish.mesh.visible = fishVisibility > 0.01;
-      // Fade out opacity
+      fish.mesh.visible = true;
       if (fish.mesh.material.opacity !== undefined) {
-        fish.mesh.material.opacity = fishVisibility;
+        fish.mesh.material.opacity = 0.9;
       }
+    });
+    this.jellyfish.forEach((jelly) => {
+      jelly.update();
     });
   }
 
@@ -60,5 +78,9 @@ export default class FishSchool {
       fish.dispose();
     });
     this.fish = [];
+    this.jellyfish.forEach((jelly) => {
+      jelly.dispose();
+    });
+    this.jellyfish = [];
   }
 }

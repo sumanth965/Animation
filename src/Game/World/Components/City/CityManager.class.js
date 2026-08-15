@@ -96,6 +96,10 @@ export default class CityManager {
       metalness: 0.3
     });
     
+    this.applyCaustics(this.baseMaterial);
+    this.applyCaustics(this.glassMaterial);
+    this.applyCaustics(this.roofMaterial);
+    
     this.windowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff, // warm white/golden vertex window light (mapped via colors)
       vertexColors: true,
@@ -252,6 +256,7 @@ export default class CityManager {
       roughness: 0.8,
       metalness: 0.1
     });
+    this.applyCaustics(roadMaterial);
     
     // 1. Inner Circular Plaza around the dome base
     const innerPlazaGeo = new THREE.RingGeometry(11, 14, 32);
@@ -327,6 +332,7 @@ export default class CityManager {
       metalness: 0.15,
       roughness: 0.75
     });
+    this.applyCaustics(bridgeMaterial);
     
     // Connect left and right districts with high-level bridges passing above the corridors
     const connections = [
@@ -361,6 +367,7 @@ export default class CityManager {
       roughness: 0.85,
       metalness: 0.2
     });
+    this.applyCaustics(rockMat);
     const rockCount = 180;
     this.rocksMesh = new THREE.InstancedMesh(rockGeo, rockMat, rockCount);
     
@@ -374,9 +381,24 @@ export default class CityManager {
     });
     const coralCount = 180;
     this.coralsMesh = new THREE.InstancedMesh(coralGeo, coralMat, coralCount);
+
+    // 3. Instanced mesh for organic swaying seaweed/kelp
+    const seaweedGeo = new THREE.CylinderGeometry(0.015, 0.14, 3.5, 5, 8);
+    seaweedGeo.translate(0, 1.75, 0); // Translate base to Y=0
+    const seaweedMat = new THREE.MeshStandardMaterial({
+      color: 0x054a32, // Dark forest green base
+      roughness: 0.65,
+      metalness: 0.1,
+      side: THREE.DoubleSide
+    });
+    this.applySeaweedShader(seaweedMat);
+    this.applyCaustics(seaweedMat);
+    const seaweedCount = 180;
+    this.seaweedMesh = new THREE.InstancedMesh(seaweedGeo, seaweedMat, seaweedCount);
     
     let rockIndex = 0;
     let coralIndex = 0;
+    let seaweedIndex = 0;
     const dummy = new THREE.Object3D();
     
     const addBaseClutter = (cx, cz, count) => {
@@ -404,6 +426,15 @@ export default class CityManager {
           dummy.updateMatrix();
           this.coralsMesh.setMatrixAt(coralIndex++, dummy.matrix);
         }
+
+        if (seaweedIndex < seaweedCount) {
+          dummy.position.set(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6);
+          const scale = 0.7 + Math.random() * 0.8;
+          dummy.scale.set(scale * 0.6, scale * (0.8 + Math.random() * 0.5), scale * 0.6);
+          dummy.rotation.set((Math.random() - 0.5) * 0.15, Math.random() * Math.PI, (Math.random() - 0.5) * 0.15);
+          dummy.updateMatrix();
+          this.seaweedMesh.setMatrixAt(seaweedIndex++, dummy.matrix);
+        }
       }
     };
     
@@ -419,8 +450,10 @@ export default class CityManager {
     
     this.rocksMesh.instanceMatrix.needsUpdate = true;
     this.coralsMesh.instanceMatrix.needsUpdate = true;
+    this.seaweedMesh.instanceMatrix.needsUpdate = true;
     this.city.add(this.rocksMesh);
     this.city.add(this.coralsMesh);
+    this.city.add(this.seaweedMesh);
     
     // 3. Golden utility pipes running on the sea floor connecting key districts
     const pipeMaterial = new THREE.MeshStandardMaterial({
@@ -566,5 +599,91 @@ export default class CityManager {
     // Windows animate with time breathing, but are independent of scroll progress
     this.windowMaterial.opacity=(.72+Math.sin(this.time.elapsedTime*1.2)*.2);
     this.debugBounds?.forEach(box=>box.update());
+  }
+
+  applyCaustics(material) {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = { get value() { return Game.getInstance().time.elapsedTime; } };
+      
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>
+         varying vec3 vWorldPosition;`
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        `#include <worldpos_vertex>
+         vWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+      );
+      
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>
+         uniform float uTime;
+         varying vec3 vWorldPosition;`
+      );
+      
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        `#include <dithering_fragment>
+         
+         // Procedural 2D caustic waves projected along Y (xz plane)
+         vec2 causticUV = vWorldPosition.xz * 0.18;
+         float causticTime = uTime * 0.75;
+         
+         float wave1 = sin(causticUV.x * 3.5 + causticTime) * cos(causticUV.y * 3.5 + causticTime);
+         float wave2 = sin(causticUV.x * 7.5 - causticTime * 1.3) * cos(causticUV.y * 5.5 + causticTime * 1.6);
+         
+         float caustics = max(0.0, (wave1 + wave2) * 0.5 + 0.35);
+         caustics = pow(caustics, 2.5) * 0.38;
+         
+         // Water flickering factor
+         float flicker = sin(uTime * 1.5 + vWorldPosition.x * 0.08) * 0.12 + 0.88;
+         caustics *= flicker;
+         
+         // Depth attenuation (deeper = weaker caustics)
+         float depthFade = clamp((vWorldPosition.y + 12.0) / 25.0, 0.0, 1.0);
+         caustics *= depthFade;
+         
+         // Tint with marine color and apply to diffuse
+         gl_FragColor.rgb += vec3(0.2, 0.75, 1.0) * caustics * diffuseColor.rgb;`
+      );
+    };
+  }
+
+  applySeaweedShader(material) {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = { get value() { return Game.getInstance().time.elapsedTime; } };
+      
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>
+         uniform float uTime;
+         varying float vHeight;`
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+         float heightFactor = clamp(position.y / 3.5, 0.0, 1.0);
+         // Wave sway based on height and time
+         float sway = sin(uTime * 1.5 + transformed.x * 2.0 + transformed.z * 1.5) * 0.45 * pow(heightFactor, 2.0);
+         transformed.x += sway;
+         transformed.z += sway * 0.35;
+         vHeight = heightFactor;`
+      );
+      
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>
+         varying float vHeight;`
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        `#include <dithering_fragment>
+         // Glow teal at the tips
+         vec3 glowColor = vec3(0.08, 0.88, 0.72);
+         gl_FragColor.rgb = mix(gl_FragColor.rgb, glowColor, vHeight * 0.75);`
+      );
+    };
   }
 }

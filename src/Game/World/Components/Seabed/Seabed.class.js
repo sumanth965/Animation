@@ -10,7 +10,9 @@ export default class Seabed {
     this.time = this.game.time;
 
     this.config = {
-      particleCount: 2 * 1000 * 1000,
+      // Two million points stalls the first render on many GPUs. This density
+      // still fills the seabed beneath the fog, without the startup hitch.
+      particleCount: window.innerWidth < 768 ? 90000 : 250000,
       gridSize: 300,
       gridDepth: 300,
       depth: -12,
@@ -18,11 +20,11 @@ export default class Seabed {
       noiseScale: 0.065,
       noiseHeight: 6.0,
       particleSize: 300.5,
-      color1: new THREE.Color(0x0f344d),
-      color2: new THREE.Color(0x206c8f),
-      color3: new THREE.Color(0x4cb9d6),
-      sandColor: new THREE.Color(0xe7d3b0),
-      rockColor: new THREE.Color(0xc5b497),
+      color1: new THREE.Color(0x020a16),
+      color2: new THREE.Color(0x08253a),
+      color3: new THREE.Color(0x298ea6),
+      sandColor: new THREE.Color(0x8ab9c4),
+      rockColor: new THREE.Color(0x406070),
       glowIntensity: 0.4,
       waveSpeed: 0.1,
       waveAmplitude: 1.2,

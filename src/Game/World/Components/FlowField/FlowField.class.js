@@ -190,45 +190,31 @@ export default class FlowField {
     const minZ = -halfZ - margin;
     const maxZ = halfZ + margin;
 
-    // Cache velocity damping factors
-    const velDamp = 0.95;
-    const velBlend = 0.05;
     const flowSpeed = this.config.flowSpeed;
-
-    // Reduce noise calculation frequency - only update every few frames
-    const shouldUpdateNoise = this._frameCount % 3 === 0;
-    this._frameCount = (this._frameCount || 0) + 1;
 
     for (let i = 0; i < this.config.particleCount; i++) {
       const i3 = i * 3;
+      const type = particleTypes[i];
       const particle = this.particles[i];
 
-      const x = positions[i3];
-      const y = positions[i3 + 1];
-      const z = positions[i3 + 2];
+      if (type < 0.45) {
+        // Bubbles rise quickly and wobble in X and Z
+        velocities[i3 + 1] = 2.2 + Math.sin(elapsed * 2.5 + particle.offset) * 0.4;
+        velocities[i3] = Math.sin(elapsed * 3.5 + particle.offset) * 0.9;
+        velocities[i3 + 2] = Math.cos(elapsed * 2.8 + particle.offset) * 0.9;
+      } else {
+        // Dust drifts slowly
+        velocities[i3 + 1] = 0.28 + Math.sin(elapsed * 0.6 + particle.offset) * 0.08;
+        velocities[i3] = Math.sin(elapsed * 0.8 + particle.offset) * 0.25;
+        velocities[i3 + 2] = Math.cos(elapsed * 0.7 + particle.offset) * 0.25;
+      }
 
-      const flow = this.getFlowField(
-        x,
-        y,
-        z,
-        elapsed + particle.offset,
-        particle
-      );
-
-      flow.y += 0.3;
-      flow.z += 0.2;
-
-      // Optimize velocity updates
       const speedDelta = flowSpeed * particle.speed * delta;
-      velocities[i3] = velocities[i3] * velDamp + flow.x * velBlend;
-      velocities[i3 + 1] = velocities[i3 + 1] * velDamp + flow.y * velBlend;
-      velocities[i3 + 2] = velocities[i3 + 2] * velDamp + flow.z * velBlend;
-
       positions[i3] += velocities[i3] * speedDelta;
       positions[i3 + 1] += velocities[i3 + 1] * speedDelta;
       positions[i3 + 2] += velocities[i3 + 2] * speedDelta;
 
-      // Optimize boundary checks with early exits
+      // Wrap boundaries
       if (positions[i3] > maxX) {
         positions[i3] = minX;
       } else if (positions[i3] < minX) {
@@ -237,6 +223,9 @@ export default class FlowField {
 
       if (positions[i3 + 1] > maxY) {
         positions[i3 + 1] = minY;
+        // Randomize horizontal spawn position when wrapping to the bottom
+        positions[i3] = (Math.random() - 0.5) * this.config.bounds.x;
+        positions[i3 + 2] = (Math.random() - 0.5) * this.config.bounds.z;
       } else if (positions[i3 + 1] < minY) {
         positions[i3 + 1] = maxY;
       }

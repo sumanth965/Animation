@@ -87,6 +87,10 @@ export default class PerformanceMonitor {
 
     this.debug.addSeparator('Performance');
 
+    this.debug.addMonitor(this.metrics, 'frameTime', { label: 'Frame Time (ms)', graph: true, min: 0, max: 33 }, 'Performance');
+    this.debug.addMonitor(this.metrics, 'drawCalls', { label: 'Draw Calls' }, 'Performance');
+    this.debug.addMonitor(this.metrics, 'triangles', { label: 'Triangles' }, 'Performance');
+
     this.debug.add(this.stats, 'showGraph', { label: 'Perf Graph' }, 'Performance');
   }
 }

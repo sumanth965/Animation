@@ -13,7 +13,7 @@
   <div class="loader" id="loading-screen">
     <div class="loader-inner">
       <!-- <div class="loader-mark">SEMAPHORE<b>’26</b></div> -->
-       <img src="./public/img/semaphore_logo.png" alt="" style="width: 500px;height: 500px;">
+       <img src="/img/semaphore_logo.png" alt="Semaphore Logo" style="width: 500px;height: 500px;">
       <p id="loader-status">LOADING THE DIVE · 0%</p><button id="enter-experience" disabled>ENTER EXPERIENCE</button>
     </div>
   </div>
@@ -28,14 +28,16 @@
     <div class="meta">14—16 FEB · NMAMIT · NITTE–KARKALA</div><button class="sound" id="audio-toggle"><span
         id="audio-label">SOUND OFF</span></button>
   </header>
-  <div class="experience-copy" aria-hidden="true"><span class="eyebrow">NMAM Institute of Technology presents</span>
+  <div class="experience-copy" aria-hidden="true"><span class="eyebrow">NMAM Institute of Technology · Submerged Campus Exhibition</span>
     <h1>DIVE INTO<br />SEMAPHORE.</h1>
-    <p>Scroll to travel. Follow the illuminated markers to discover the fest.</p>
+    <p>Scroll to descend. Follow the bioluminescent markers to explore the city.</p>
   </div>
   <main class="scroll-track" aria-label="Semaphore scroll journey">
     <div class="scroll-space" id="register"></div>
   </main>
-  <div class="hud">NOW EXPLORING / <b id="current-chapter">DIVE</b> · <span id="event-status">FOLLOW THE MARKERS</span>
+  <div class="hud">
+    <div class="telemetry">DEPTH: <span id="telemetry-depth">0m</span> &nbsp;·&nbsp; STATUS: <span id="telemetry-status">STABLE</span></div>
+    NOW EXPLORING / <b id="current-chapter">DIVE</b> · <span id="event-status">FOLLOW THE MARKERS</span>
   </div>
   <script type="module" src="/src/index.js"></script>
 </body>

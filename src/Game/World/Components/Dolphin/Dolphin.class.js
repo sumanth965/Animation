@@ -1,5 +1,4 @@
-import * as THREE from 'three';
-import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+/Users/admin/Documents/Projects/Animation 2/src/Shaders/Dolphin/sparkleFragment.glslimport * as THREE from 'three';
 import vertexShader from '../../../../Shaders/Dolphin/vertex.glsl';
 import fragmentShader from '../../../../Shaders/Dolphin/fragment.glsl';
 import sparkleVertexShader from '../../../../Shaders/Dolphin/sparkleVertex.glsl';
@@ -32,8 +31,10 @@ export default class Dolphin {
     this.path = new DolphinPath();
     this.journeyProgress = 0;
     this.focusProgress = null;
+    this.updateTimeMs = 0;
     this.targetQuaternion = new THREE.Quaternion();
     this.forward = new THREE.Vector3(0, 0, 1);
+    this.heroTangent = new THREE.Vector3(-0.95, -0.1, -0.3).normalize();
     this.setupSurfaceSampling();
     this.setPathDebug();
     this.setDebug();
@@ -98,6 +99,7 @@ export default class Dolphin {
     if (!this.game.isDebugEnabled) return;
 
     const debug = this.game.debug;
+    debug.addMonitor(this, 'updateTimeMs', { label: 'Update Time (ms)', graph: true, min: 0, max: 16 }, 'Dolphin');
 
     debug.add(
       this.material.uniforms.uBaseColor,
@@ -259,6 +261,7 @@ export default class Dolphin {
   }
 
   update() {
+    const updateStart = this.game.isDebugEnabled ? performance.now() : 0;
     if (this.animation?.mixer) {
       this.animation.mixer.update(this.time.delta);
     }
@@ -284,16 +287,38 @@ export default class Dolphin {
     if (this.sparklesMaterial?.uniforms.uTime) {
       this.sparklesMaterial.uniforms.uTime.value = this.time.elapsedTime;
     }
+
+    if (this.game.isDebugEnabled) this.updateTimeMs = performance.now() - updateStart;
   }
 
   updateJourney() {
     const scrollProgress = this.game.scroll.progress;
+
+    if (this.game.scroll.state === 'IDLE_HERO') {
+      // Keep the hero alive without evaluating the cinematic spline or camera.
+      const elapsed = this.time.elapsedTime;
+      this.dolphin.position.set(
+        4.35 + Math.sin(elapsed * 0.6) * 0.08,
+        3.65 + Math.sin(elapsed * 0.9) * 0.055,
+        3.3 + Math.cos(elapsed * 0.5) * 0.06,
+      );
+      this.dolphin.scale.setScalar(1.06);
+      this.targetQuaternion.setFromUnitVectors(this.forward, this.heroTangent);
+      this.dolphin.quaternion.slerp(this.targetQuaternion, 1 - Math.exp(-this.time.delta * 3));
+      this.dolphinVelocity = 0;
+      return;
+    }
     const destination = this.focusProgress === null ? scrollProgress : this.focusProgress;
+    
+    // Give the hero a slight emphasis without allowing its silhouette to crop
+    // at the edge of the opening viewport.
+    const scale = THREE.MathUtils.lerp(1.06, 1.0, THREE.MathUtils.smoothstep(scrollProgress, 0.0, 0.12));
+    this.dolphin.scale.set(scale, scale, scale);
     
     const isDolphinSettled = this.game.scroll.isSettled && 
                              (this.focusProgress === null || Math.abs(this.journeyProgress - destination) < 0.0001);
     
-    if (isDolphinSettled && this._journeyProgressSettled) {
+    if (isDolphinSettled && this._journeyProgressSettled && scrollProgress >= 0.12) {
       const pulse = Math.sin(this.time.elapsedTime * 4.2) * .025;
       this.dolphin.rotation.z = this._settledRotationZ + pulse;
       this.dolphinVelocity = 0;
@@ -340,41 +365,24 @@ export default class Dolphin {
     }
 
     // Surface particles are expensive because they follow skinned vertices.
-    this.sparkleCount = window.innerWidth < 768 ? 450 : 1000;
-    this.connectionDistance = 0.15;
-
-    this.sampler = new MeshSurfaceSampler(this.dolphinMesh)
-      .setWeightAttribute(null)
-      .build();
+    // Surface sampling runs during the first render. A denser connection radius
+    // gives a clear wireframe with far fewer points and much lower CPU cost.
+    this.sparkleCount = window.innerWidth < 768 ? 220 : 400;
+    this.connectionDistance = 0.28;
 
     this.sampledData = [];
-    const tempPosition = new THREE.Vector3();
-    const tempNormal = new THREE.Vector3();
     const geometry = this.dolphinMesh.geometry;
     const posAttr = geometry.getAttribute('position');
+    const normalAttr = geometry.getAttribute('normal');
 
     for (let i = 0; i < this.sparkleCount; i++) {
-      this.sampler.sample(tempPosition, tempNormal);
-
-      let closestIndex = 0;
-      let closestDist = Infinity;
-      const searchVec = new THREE.Vector3();
-
-      for (let v = 0; v < posAttr.count; v++) {
-        searchVec.fromBufferAttribute(posAttr, v);
-        const dist = searchVec.distanceToSquared(tempPosition);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closestIndex = v;
-        }
-      }
+      // Cached vertex anchors avoid scanning the whole mesh for each sparkle.
+      const vertexIndex = Math.floor(Math.random() * posAttr.count);
 
       this.sampledData.push({
-        vertexIndex: closestIndex,
-        offset: tempPosition
-          .clone()
-          .sub(new THREE.Vector3().fromBufferAttribute(posAttr, closestIndex)),
-        normal: tempNormal.clone(),
+        vertexIndex,
+        offset: new THREE.Vector3(),
+        normal: normalAttr ? new THREE.Vector3().fromBufferAttribute(normalAttr, vertexIndex) : null,
         random: Math.random(),
         size: Math.random() * 0.5 + 0.5,
       });
@@ -411,9 +419,9 @@ export default class Dolphin {
       blending: THREE.AdditiveBlending,
       uniforms: {
         uTime: { value: 0 },
-        uSize: { value: 50.0 },
-        uColor1: { value: new THREE.Color(0x327fe2) },
-        uColor2: { value: new THREE.Color(0x719bf8) },
+        uSize: { value: 30.0 },
+        uColor1: { value: new THREE.Color(0x15dfff) },
+        uColor2: { value: new THREE.Color(0x4d8dff) },
         uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
         uVelocity: { value: 0 },
       },
@@ -470,7 +478,7 @@ export default class Dolphin {
                      
     if (isSettled) {
       this._sparkleFrameSkip = (this._sparkleFrameSkip || 0) + 1;
-      if (this._sparkleFrameSkip < 5) {
+      if (this._sparkleFrameSkip < 12) {
         return;
       }
       this._sparkleFrameSkip = 0;
@@ -548,7 +556,7 @@ export default class Dolphin {
 
     // Dynamic line opacity based on velocity
     const velocityIntensity = THREE.MathUtils.smoothstep(this.game.scroll.sharedVelocity, 0, 1.5);
-    this.linesMaterial.opacity = 0.12 + velocityIntensity * 0.76;
+    this.linesMaterial.opacity = 0.52 + velocityIntensity * 0.38;
 
     // Simple spatial grid optimization
     const gridSize = this.connectionDistance * 2;

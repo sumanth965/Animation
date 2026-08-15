@@ -35,10 +35,12 @@ export default class Wormhole {
     this.tunnelGroup = new THREE.Group();
     this.scene.add(this.tunnelGroup);
 
-    this.scene.background = new THREE.Color(0x001235);
+    this.scene.background = new THREE.Color(0x020a16);
 
     this.createSpeedLines();
     this.createTube();
+    this.tunnelGroup.visible = false;
+    this.tubeMesh.visible = false;
 
     if (this.isDebugEnabled) {
       this.initDebugGUI();
@@ -244,6 +246,13 @@ export default class Wormhole {
   }
 
   update() {
+    // The tunnel wall reads as a large pole along the left edge of the hero.
+    // Keep the opening composition clean and introduce it with the dive.
+    const hasStartedDive = this.game.scroll.progress > 0.035;
+    this.tunnelGroup.visible = hasStartedDive;
+    this.tubeMesh.visible = hasStartedDive;
+    if (!hasStartedDive) return;
+
     const delta = this.time.delta;
     const zRange = this.config.startZ - this.config.endZ;
     const invZRange = 1 / zRange; // Cache division

@@ -14,7 +14,8 @@ export default class World {
   constructor() {
     this.game = Game.getInstance();
     this.scene = this.game.scene;
-    this.scene.fog = new THREE.Fog(0x101b2b, 70, 220);
+    this.scene.fog = new THREE.Fog(0x020a16, 5, 28);
+    this.scene.background = new THREE.Color(0x020a16);
 
     this.lighting = new Lighting({ helperEnabled: false });
 
@@ -43,6 +44,26 @@ export default class World {
   }
 
   update() {
+    const state = this.game.scroll.state;
+    const isCinematic = state === 'SCROLLING' || Boolean(this.eventManager.selected);
+
+    // Dynamic fog adjustment based on scroll progress to gradually reveal the city
+    if (this.scene.fog) {
+      const progress = this.game.scroll.progress;
+      if (progress < 0.15) {
+        const t = progress / 0.15;
+        this.scene.fog.near = THREE.MathUtils.lerp(5, 20, t);
+        this.scene.fog.far = THREE.MathUtils.lerp(28, 85, t);
+      } else if (progress < 0.45) {
+        const t = (progress - 0.15) / 0.3;
+        this.scene.fog.near = THREE.MathUtils.lerp(20, 75, t);
+        this.scene.fog.far = THREE.MathUtils.lerp(85, 230, t);
+      } else {
+        this.scene.fog.near = 75;
+        this.scene.fog.far = 230;
+      }
+    }
+
     const scrollDirty = this.game.scroll.dirty;
     // Get camera frustum for culling
     const camera = this.game.camera.cameraInstance;
@@ -52,34 +73,43 @@ export default class World {
     frustum.setFromProjectionMatrix(cameraMatrix);
 
     // Update order optimized: simpler systems first, complex ones last
-    if (this.seabed) {
+    if (this.lighting && isCinematic) {
+      this.lighting.update();
+    }
+    // Keep a low-frequency ambient seabed motion in the hero, but avoid
+    // updating its uniforms every frame while the view is at rest.
+    this._ambientFrame = (this._ambientFrame || 0) + 1;
+    if (this.seabed && (isCinematic || this._ambientFrame % 8 === 0)) {
       this.seabed.update();
     }
-    if (this.wormhole) {
+    if (this.wormhole && isCinematic) {
       this.wormhole.update();
     }
-    if (this.city && (scrollDirty || !this.game.scroll.isSettled)) this.city.update();
-    if (this.flowField) {
+    if (this.city && isCinematic && (scrollDirty || !this.game.scroll.isSettled)) this.city.update();
+    if (this.flowField && isCinematic) {
       // Only update FlowField if visible
       if (this.flowField.points && frustum.intersectsObject(this.flowField.points)) {
         this.flowField.update();
       }
     }
-    if (this.fishSchool) {
+    if (this.fishSchool && isCinematic) {
       this.fishSchool.update();
     }
     if (this.dolphin) {
       this.dolphin.update();
       
       const cameraSettled = this.isCameraFullySettled();
-      if (scrollDirty || !this.game.scroll.isSettled || this.eventManager.selected || !cameraSettled || !this.cameraReady) {
+      if (isCinematic || !this.cameraReady) {
         this.updateJourneyCamera();
         this.eventManager.update();
         this.cameraReady = true;
       }
     }
     if (this.wakeParticles) {
+      this.wakeParticles.particleSystem.visible = isCinematic;
+      if (isCinematic) {
       this.wakeParticles.update();
+      }
     }
   }
 
@@ -158,8 +188,8 @@ export default class World {
     
     // 2. Overview / Establishing shot at the start
     const overview = THREE.MathUtils.smoothstep(progress, 0, 0.13);
-    const overviewTarget = new THREE.Vector3(4.0, 10.0, 20.0);
-    const overviewFocus = new THREE.Vector3(0, -8, -32); // Center of the metropolis
+    const overviewTarget = new THREE.Vector3(4.0, 6.5, 15.0);
+    const overviewFocus = new THREE.Vector3(2.5, 1.0, -10.0); // Focus closer to starting dolphin position
     
     // 3. Dynamic follow target calculation
     if (!this.smoothedTangent) {

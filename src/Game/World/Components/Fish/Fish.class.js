@@ -32,12 +32,13 @@ export default class Fish {
     geometry.scale(1, 0.6, 2.5); // Make it fish-shaped (longer and thinner)
 
     const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color().setHSL(0.55 + Math.random() * 0.1, 0.7, 0.5), // Blue-ish tones
-      metalness: 0.6,
-      roughness: 0.3,
-      emissive: new THREE.Color().setHSL(0.55, 0.4, 0.3),
+      color: new THREE.Color(0x0f8fa3), // base teal
+      metalness: 0.8,
+      roughness: 0.2,
+      emissive: new THREE.Color(0x29efff), // glowing cyan bioluminescence
+      emissiveIntensity: 2.2,
       transparent: true,
-      opacity: 1,
+      opacity: 0.9,
     });
 
     this.mesh = new THREE.Mesh(geometry, material);

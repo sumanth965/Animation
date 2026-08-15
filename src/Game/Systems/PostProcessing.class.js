@@ -123,6 +123,10 @@ export default class PostProcessing {
   }
 
   update(elapsedTime, deltaTime) {
+    // Idle hero values are already settled. Avoid continuously touching the
+    // full-screen effect uniforms until the user interacts or starts diving.
+    if (this.game.scroll.state !== 'SCROLLING' && !this.isDragging) return;
+
     this.combinedPass.uniforms.uTime.value = elapsedTime;
     this.combinedPass.uniforms.uMouseInfluence.value.copy(this.mouseVelocity);
 

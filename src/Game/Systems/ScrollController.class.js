@@ -26,6 +26,7 @@ export default class ScrollController {
     this.sharedVelocity = 0;
     this.isScrolling = false;
     this.isSettled = true;
+    this.state = 'IDLE_HERO';
     this.dirty = true;
     this.lastActivityTime = performance.now();
     
@@ -73,6 +74,7 @@ export default class ScrollController {
     debug.addMonitor(this, 'lightIntensity', { label: 'Light Intensity', graph: true }, folderName);
     debug.addMonitor(this, 'isScrolling', { label: 'Is Scrolling' }, folderName);
     debug.addMonitor(this, 'isSettled', { label: 'Is Settled' }, folderName);
+    debug.addMonitor(this, 'state', { label: 'Scene State' }, folderName);
   }
 
   update(delta) {
@@ -103,6 +105,8 @@ export default class ScrollController {
     const remaining = Math.abs(this.targetScroll - this.currentScroll);
     this.isSettled = remaining < 0.0001 && Math.abs(this.dolphinVelocity) < 0.001 && !this.lenis.isScrolling;
     this.isScrolling = !this.isSettled;
+    const isAtHero = this.isSettled && this.progress < 0.001 && this.targetScroll < 0.001;
+    this.state = !this.isSettled ? 'SCROLLING' : isAtHero ? 'IDLE_HERO' : 'SETTLED';
     this.dirty = Math.abs(this.progress - this._lastProgress) > 0.00001 || !this.isSettled;
     this._lastProgress = this.progress;
     
@@ -130,6 +134,26 @@ export default class ScrollController {
     
     // 6. Update HTML properties & chapters
     document.documentElement.style.setProperty('--scroll-progress', this.progress);
+    document.body.dataset.sceneState = this.state;
+    
+    // Update telemetry HUD
+    const depth = Math.round(this.progress * 320);
+    const depthEl = this.depthEl || (this.depthEl = document.getElementById('telemetry-depth'));
+    if (depthEl) depthEl.textContent = depth + 'm';
+    
+    const statusEl = this.statusEl || (this.statusEl = document.getElementById('telemetry-status'));
+    if (statusEl) {
+      let statusText = 'STABLE';
+      if (document.body.dataset.currentEvent) {
+        statusText = 'MARKER ACQUIRED';
+      } else if (this.isScrolling) {
+        statusText = 'EXPLORING';
+      } else {
+        statusText = 'DOCKED';
+      }
+      statusEl.textContent = statusText;
+    }
+
     const intro = this.intro || (this.intro = document.querySelector('.experience-copy'));
     if (intro) intro.style.opacity = 1 - THREE.MathUtils.smoothstep(this.progress, 0.06, 0.28);
     const phase = this.progress < 0.33 ? 'DIVE' : this.progress < 0.7 ? 'EXPLORE' : 'EXPERIENCE';

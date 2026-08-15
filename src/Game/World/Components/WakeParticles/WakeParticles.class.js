@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js';
-import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 import Game from '../../../Game.class';
 import simulationShader from '../../../../Shaders/WakeParticles/simulation.glsl';
 import vertexShader from '../../../../Shaders/WakeParticles/vertex.glsl';
@@ -14,7 +13,8 @@ export default class WakeParticles {
     this.time = this.game.time;
     this.dolphin = dolphin;
 
-    this.WIDTH = 150;
+    // Enough density for a luminous wake without a first-load GPU/CPU spike.
+    this.WIDTH = window.innerWidth < 768 ? 40 : 56;
     this.PARTICLES = this.WIDTH * this.WIDTH;
 
     this.config = {
@@ -53,6 +53,7 @@ export default class WakeParticles {
 
     this.particleSystem = new THREE.Points(this.geometry, this.material);
     this.particleSystem.frustumCulled = false;
+    this.particleSystem.visible = false;
     this.scene.add(this.particleSystem);
   }
 
@@ -90,37 +91,20 @@ export default class WakeParticles {
 
     geometry.setAttribute('weight', new THREE.BufferAttribute(weights, 1));
 
-    this.sampler = new MeshSurfaceSampler(this.dolphinMesh)
-      .setWeightAttribute('weight')
-      .build();
-
     this.sampledData = [];
-    const tempPosition = new THREE.Vector3();
-    const tempNormal = new THREE.Vector3();
+    const normalAttr = geometry.getAttribute('normal');
 
     for (let i = 0; i < this.PARTICLES; i++) {
-      this.sampler.sample(tempPosition, tempNormal);
-
-      let closestIndex = 0;
-      let closestDist = Infinity;
-      const searchVec = new THREE.Vector3();
-
-      for (let v = 0; v < posAttr.count; v++) {
-        searchVec.fromBufferAttribute(posAttr, v);
-        const dist = searchVec.distanceToSquared(tempPosition);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closestIndex = v;
-        }
-      }
+      // Pin particles to cached model vertices rather than performing a full
+      // nearest-vertex search for every wake particle during initialization.
+      const vertexIndex = Math.floor(Math.random() * posAttr.count);
+      const position = new THREE.Vector3().fromBufferAttribute(posAttr, vertexIndex);
 
       this.sampledData.push({
-        position: tempPosition.clone(),
-        normal: tempNormal.clone(),
-        vertexIndex: closestIndex,
-        offset: tempPosition
-          .clone()
-          .sub(new THREE.Vector3().fromBufferAttribute(posAttr, closestIndex)),
+        position,
+        normal: normalAttr ? new THREE.Vector3().fromBufferAttribute(normalAttr, vertexIndex) : new THREE.Vector3(0, 1, 0),
+        vertexIndex,
+        offset: new THREE.Vector3(),
       });
     }
   }

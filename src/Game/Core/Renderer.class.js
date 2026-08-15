@@ -49,7 +49,7 @@ export default class Renderer {
     this.rendererInstance.localClippingEnabled = false;
     this.rendererInstance.physicallyCorrectLights = false;
 
-    this.rendererInstance.setClearColor(0x010126);
+    this.rendererInstance.setClearColor(0x020a16);
     this.rendererInstance.toneMapping = THREE.NoToneMapping; // Disable - handle in post-processing
     this.rendererInstance.toneMappingExposure = 1.0;
     this.rendererInstance.shadowMap.enabled = true;
