@@ -56,8 +56,7 @@ export default class World {
     this._frustum = new THREE.Frustum();
     this._cameraMatrix = new THREE.Matrix4();
 
-    // 2. Schedule progressive background initialization batches across animation frames
-    this.scheduleProgressiveBatches();
+    this.progressiveBatchesStarted = false;
     
     // Configurable camera settings for smooth dynamic follow
     this.cameraConfig = {
@@ -72,6 +71,13 @@ export default class World {
     
     this.desiredCameraPos = new THREE.Vector3();
     this.desiredFocusPos = new THREE.Vector3();
+  }
+
+  startProgressiveBatches() {
+    if (this.progressiveBatchesStarted) return;
+    this.progressiveBatchesStarted = true;
+    console.log('[World] Starting progressive background batch initialization after loader fade...');
+    this.scheduleProgressiveBatches();
   }
 
   scheduleProgressiveBatches() {

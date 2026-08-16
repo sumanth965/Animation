@@ -8,14 +8,18 @@ import PostProcessing from './Systems/PostProcessing.class';
 import World from './World/World.scene';
 import DebugPane from './Utils/DebugPane.class';
 import ScrollController from './Systems/ScrollController.class';
+import EventEmitter from './Utils/EventEmitter.class';
 
-export default class Game {
+export default class Game extends EventEmitter {
   constructor(canvas, resources, debugMode) {
     if (Game.instance) {
       return Game.instance;
     }
+    super();
     Game.instance = this;
 
+    this.initialSceneReady = false;
+    this.hasFirstRendered = false;
     this.isDebugEnabled = debugMode;
     this.stageMetrics = {};
     const gameStartTime = performance.now();
@@ -84,7 +88,23 @@ export default class Game {
       this.postProcessing = null;
     }, false);
 
-    runStage(11, 'Animation Loop', () => {
+    runStage(11, 'Initial State & Shader Pre-compilation', () => {
+      if (this.world) {
+        this.world.update();
+      }
+      if (this.renderer && this.renderer.rendererInstance && this.scene && this.camera && this.camera.cameraInstance) {
+        this.renderer.rendererInstance.compile(this.scene, this.camera.cameraInstance);
+      }
+    });
+
+    runStage(12, 'First Frame Render & Confirmation', () => {
+      this.update();
+      this.hasFirstRendered = true;
+      this.initialSceneReady = true;
+      this.trigger('ready');
+    });
+
+    runStage(13, 'Animation Loop', () => {
       this.time.on('animate', () => {
         this.update();
       });

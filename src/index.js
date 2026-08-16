@@ -111,19 +111,28 @@ resources.on('progress', ({ percent }) => {
 
 resources.on('error', ({ id }) => {
   console.warn(`[Asset Warning] Optional asset unavailable: ${id}`);
-  if (loaderStatus) loaderStatus.textContent = 'PREPARING EXPERIENCE · 100%';
 });
 
 resources.on('loaded', () => {
   console.log('[Startup] All assets finished loading. Initializing Three.js Game Engine...');
-  if (loaderStatus) loaderStatus.textContent = 'EXPERIENCE READY · 100%';
-  if (enterButton) enterButton.disabled = false;
+  if (loaderStatus) loaderStatus.textContent = 'BUILDING SCENE · 99%';
 
   try {
     const canvasEl = document.getElementById('three');
     if (!canvasEl) throw new Error('Canvas element #three not found in DOM.');
-    new Game(canvasEl, resources, debugMode);
-    console.log('[Startup] Three.js Game Engine initialized successfully.');
+    const game = new Game(canvasEl, resources, debugMode);
+
+    const onSceneReady = () => {
+      console.log('[Startup] Initial underwater scene fully initialized & first frame rendered.');
+      if (loaderStatus) loaderStatus.textContent = 'EXPERIENCE READY · 100%';
+      if (enterButton) enterButton.disabled = false;
+    };
+
+    if (game.initialSceneReady) {
+      onSceneReady();
+    } else {
+      game.on('ready', onSceneReady);
+    }
   } catch (err) {
     console.error('[Startup Error] Critical failure during Game engine initialization:', err);
     showInitErrorBanner('Game Engine Setup', err);
@@ -132,7 +141,14 @@ resources.on('loaded', () => {
 
 if (enterButton) {
   enterButton.addEventListener('click', () => {
+    const game = Game.instance;
+    if (!game || !game.initialSceneReady) return;
+
     if (loadingScreen) loadingScreen.classList.add('hidden');
+    if (game.scroll) game.scroll.enableScroll();
+    if (game.world && typeof game.world.startProgressiveBatches === 'function') {
+      game.world.startProgressiveBatches();
+    }
     setSound(true);
   });
 }

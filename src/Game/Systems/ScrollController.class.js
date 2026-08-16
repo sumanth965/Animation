@@ -19,6 +19,7 @@ export default class ScrollController {
     });
     
     // Scroll-state system
+    this.enabled = false;
     this.targetScroll = 0;
     this.currentScroll = 0;
     this.scrollVelocity = 0;
@@ -43,6 +44,7 @@ export default class ScrollController {
     this.velocity = 0;
     
     this.lenis.on('scroll', (e) => {
+      if (!this.enabled) return;
       this.targetScroll = e.progress;
       this.scrollVelocity = e.velocity;
       if (e.progress > 0.001 || Math.abs(e.velocity) > 0.01) {
@@ -54,14 +56,41 @@ export default class ScrollController {
       this.lastActivityTime = performance.now();
     });
 
-    // Handle browsers that restore scroll after module evaluation.
-    this.lenis.scrollTo(0, { immediate: true });
-    requestAnimationFrame(() => { 
-      this.lenis.scrollTo(0, { immediate: true }); 
-    });
+    // Start with scroll disabled while loader is active
+    this.disableScroll();
     
     if (this.game.isDebugEnabled) {
       this.setupDebug();
+    }
+  }
+
+  enableScroll() {
+    this.enabled = true;
+    document.body.style.overflow = '';
+    if (this.lenis) {
+      this.lenis.start();
+    }
+  }
+
+  disableScroll() {
+    this.enabled = false;
+    this.targetScroll = 0;
+    this.currentScroll = 0;
+    this.scrollVelocity = 0;
+    this.dolphinVelocity = 0;
+    this.sharedVelocity = 0;
+    this.isScrolling = false;
+    this.isSettled = true;
+    this.userHasScrolled = false;
+    this.state = 'IDLE_HERO';
+    this.progress = 0;
+    this.target = 0;
+    this.velocity = 0;
+    document.body.style.overflow = 'hidden';
+    window.scrollTo(0, 0);
+    if (this.lenis) {
+      this.lenis.stop();
+      this.lenis.scrollTo(0, { immediate: true });
     }
   }
 
@@ -86,6 +115,23 @@ export default class ScrollController {
 
   update(delta) {
     if (delta <= 0) return;
+
+    if (!this.enabled) {
+      this.targetScroll = 0;
+      this.currentScroll = 0;
+      this.scrollVelocity = 0;
+      this.dolphinVelocity = 0;
+      this.sharedVelocity = 0;
+      this.isScrolling = false;
+      this.isSettled = true;
+      this.state = 'IDLE_HERO';
+      this.progress = 0;
+      this.target = 0;
+      this.velocity = 0;
+      document.documentElement.style.setProperty('--scroll-progress', '0');
+      document.body.dataset.sceneState = 'IDLE_HERO';
+      return;
+    }
 
     // 1. Advance Lenis simulation
     this.lenis.raf(performance.now());
