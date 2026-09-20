@@ -82,7 +82,12 @@ const setSound = (value) => {
   } else {
     bgm.pause();
   }
-  if (audioLabel) audioLabel.textContent = value ? 'SOUND ON' : 'SOUND OFF';
+  const iconOn = document.getElementById('sound-icon-on');
+  const iconOff = document.getElementById('sound-icon-off');
+  if (iconOn && iconOff) {
+    iconOn.style.display = value ? 'block' : 'none';
+    iconOff.style.display = value ? 'none' : 'block';
+  }
 };
 if (audioToggle) audioToggle.addEventListener('click', () => setSound(!playing));
 
@@ -197,3 +202,14 @@ document.getElementById('footer-cta')?.addEventListener('click', (e) => {
   }, 50);
 });
 
+// Hide exploration copy on scroll
+window.addEventListener('scroll', () => {
+  const copy = document.querySelector('.exploration-copy');
+  if (copy) {
+    if (window.scrollY > 50) {
+      copy.style.opacity = '0';
+    } else {
+      copy.style.opacity = '1';
+    }
+  }
+});

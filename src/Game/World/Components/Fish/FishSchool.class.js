@@ -45,6 +45,12 @@ export default class FishSchool {
 
   spawnJellyfish() {
     const positions = [
+      // New positions near the initial camera (4, 6.5, 15) looking at (2.5, 1, -10)
+      // These will be on the left side of the screen near the text
+      new THREE.Vector3(-2, 4.5, 6),
+      new THREE.Vector3(1, 2.5, 1),
+      
+      // Existing far positions
       new THREE.Vector3(-10, -5, -15),
       new THREE.Vector3(8, -8, -30),
       new THREE.Vector3(-9, -2, -50),

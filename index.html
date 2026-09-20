@@ -12,33 +12,42 @@
 <body>
   <div class="loader" id="loading-screen">
     <div class="loader-inner">
-      <!-- <div class="loader-mark">SEMAPHORE<b>’26</b></div> -->
-       <img src="/img/semaphore_logo.png" alt="Semaphore Logo" style="width: 500px;height: 500px;">
+      <div class="cyber-compass">
+        <div class="compass-ring compass-ring-outer"></div>
+        <div class="compass-ring compass-ring-inner"></div>
+        <div class="compass-needle"></div>
+        <div class="compass-center"></div>
+      </div>
       <p id="loader-status">LOADING THE DIVE · 0%</p><button id="enter-experience" disabled>ENTER EXPERIENCE</button>
     </div>
   </div>
+  <div class="exploration-copy" aria-hidden="true">
+    <span class="eyebrow">OCEANIC EXPLORATION INITIATIVE</span>
+    <h1>AQUATIC<br />FRONTIER</h1>
+    <p>Monitoring topographic anomalies. Calibrating bioluminescence sensors for deep sea navigation.</p>
+  </div>
   <canvas id="three"></canvas>
+  <button class="sound-icon-btn" id="audio-toggle" aria-label="Toggle Sound">
+    <svg id="sound-icon-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+    </svg>
+    <svg id="sound-icon-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <line x1="23" y1="9" x2="17" y2="15"></line>
+      <line x1="17" y1="9" x2="23" y2="15"></line>
+    </svg>
+  </button>
   <div id="event-markers" aria-label="Event locations"></div>
   <aside class="event-panel" id="event-panel" aria-hidden="true" aria-label="Event information"><button
       class="panel-close" type="button" data-close-event aria-label="Close event information">×</button>
     <div id="event-panel-content"></div>
   </aside>
-  <header class="topbar">
-    <div class="brand">SEMAPHORE<b>’26</b></div>
-    <div class="meta">14—16 FEB · NMAMIT · NITTE–KARKALA</div><button class="sound" id="audio-toggle"><span
-        id="audio-label">SOUND OFF</span></button>
-  </header>
-  <div class="experience-copy" aria-hidden="true"><span class="eyebrow">NMAM Institute of Technology · Submerged Campus Exhibition</span>
-    <h1>DIVE INTO<br />SEMAPHORE.</h1>
-    <p>Scroll to descend. Follow the bioluminescent markers to explore the city.</p>
-  </div>
+
   <main class="scroll-track" aria-label="Semaphore scroll journey">
     <div class="scroll-space" id="register"></div>
   </main>
-  <div class="hud">
-    <div class="telemetry">DEPTH: <span id="telemetry-depth">0m</span> &nbsp;·&nbsp; STATUS: <span id="telemetry-status">STABLE</span></div>
-    NOW EXPLORING / <b id="current-chapter">DIVE</b> · <span id="event-status">FOLLOW THE MARKERS</span>
-  </div>
+
 
   <footer class="site-footer" id="site-footer" aria-label="Website footer">
     <div class="footer-container">
